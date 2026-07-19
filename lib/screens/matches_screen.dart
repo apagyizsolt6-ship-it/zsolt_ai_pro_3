@@ -1,6 +1,6 @@
 // ===========================================
 // ZSOLT AI PRO 3
-// Version: v0.5.3
+// Version: v0.5.4
 // File: lib/screens/matches_screen.dart
 // ===========================================
 
@@ -8,6 +8,7 @@ import 'package:flutter/material.dart';
 
 import '../models/app_match.dart';
 import '../repositories/match_repository.dart';
+import 'match_detail_screen.dart';
 
 import 'matches/widgets/day_selector.dart';
 import 'matches/widgets/filter_bar.dart';
@@ -149,9 +150,7 @@ class _MatchesScreenState extends State<MatchesScreen> {
                   onSelected: (index) {
                     setState(() {
                       selectedFilter = index;
-
-                      _onlyFavourites =
-                          index == 1;
+                      _onlyFavourites = index == 1;
                     });
                   },
                 ),
@@ -209,8 +208,14 @@ class _MatchesScreenState extends State<MatchesScreen> {
               MatchCard(
                 match: match,
                 onTap: () {
-                  // TODO:
-                  // Match Detail képernyő
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => MatchDetailScreen(
+                        match: match,
+                      ),
+                    ),
+                  );
                 },
                 onFavouriteTap: () {
                   _toggleFavourite(match);
@@ -223,8 +228,14 @@ class _MatchesScreenState extends State<MatchesScreen> {
         return MatchCard(
           match: match,
           onTap: () {
-            // TODO:
-            // Match Detail képernyő
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => MatchDetailScreen(
+                  match: match,
+                ),
+              ),
+            );
           },
           onFavouriteTap: () {
             _toggleFavourite(match);
