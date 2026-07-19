@@ -1,6 +1,6 @@
 // ===========================================
 // ZSOLT AI PRO 3
-// Version: v0.4.0
+// Version: v0.5.0
 // File: lib/models/app_match.dart
 // ===========================================
 
@@ -63,6 +63,8 @@ class AppMatch {
   bool get isMediumConfidence =>
       aiScore >= 75 && aiScore < 90;
 
+  bool get isLowConfidence => aiScore < 75;
+
   AppMatch copyWith({
     int? id,
     String? leagueName,
@@ -117,15 +119,15 @@ class AppMatch {
       leagueLogo: json["leagueLogo"] ?? "",
       kickoff: DateTime.tryParse(json["kickoff"] ?? "") ??
           DateTime.now(),
-      aiScore: json["aiScore"] ?? 0,
-      prediction: json["prediction"] ?? "",
-      status: json["status"] ?? "NS",
       homeOdd: (json["homeOdd"] as num?)?.toDouble(),
       drawOdd: (json["drawOdd"] as num?)?.toDouble(),
       awayOdd: (json["awayOdd"] as num?)?.toDouble(),
+      aiScore: json["aiScore"] ?? 0,
       valueBet: json["valueBet"] ?? false,
       live: json["live"] ?? false,
       favourite: json["favourite"] ?? false,
+      prediction: json["prediction"] ?? "",
+      status: json["status"] ?? "NS",
     );
   }
 
@@ -144,11 +146,11 @@ class AppMatch {
       "drawOdd": drawOdd,
       "awayOdd": awayOdd,
       "aiScore": aiScore,
-      "prediction": prediction,
-      "status": status,
       "valueBet": valueBet,
       "live": live,
       "favourite": favourite,
+      "prediction": prediction,
+      "status": status,
     };
   }
 }
