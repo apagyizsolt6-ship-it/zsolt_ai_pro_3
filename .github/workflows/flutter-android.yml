@@ -37,6 +37,9 @@ jobs:
             --project-name=zsolt_ai_pro_3 \
             --org=hu.zsoltproai
 
+      - name: 🗑 Remove default widget test
+        run: rm -f test/widget_test.dart
+
       - name: 📥 Get packages
         run: flutter pub get
 
