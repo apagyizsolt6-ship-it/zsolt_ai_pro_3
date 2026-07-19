@@ -1,13 +1,28 @@
 // ===========================================
 // ZSOLT AI PRO 3
-// Version: v0.3.0
+// Version: v0.3.6
 // File: lib/screens/matches_screen.dart
 // ===========================================
 
 import 'package:flutter/material.dart';
 
-class MatchesScreen extends StatelessWidget {
+import 'matches/widgets/search_bar.dart';
+import 'matches/widgets/day_selector.dart';
+import 'matches/widgets/filter_bar.dart';
+import 'matches/widgets/league_header.dart';
+import 'matches/widgets/match_card.dart';
+
+class MatchesScreen extends StatefulWidget {
   const MatchesScreen({super.key});
+
+  @override
+  State<MatchesScreen> createState() => _MatchesScreenState();
+}
+
+class _MatchesScreenState extends State<MatchesScreen> {
+  int selectedDay = 0;
+  int selectedFilter = 0;
+  String search = "";
 
   @override
   Widget build(BuildContext context) {
@@ -23,218 +38,81 @@ class MatchesScreen extends StatelessWidget {
             fontWeight: FontWeight.bold,
           ),
         ),
-        centerTitle: false,
       ),
       body: ListView(
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.all(16),
         children: [
-          TextField(
-            decoration: InputDecoration(
-              hintText: "Csapat vagy bajnokság keresése...",
-              prefixIcon: const Icon(Icons.search),
-              filled: true,
-              fillColor: Colors.white,
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(18),
-                borderSide: BorderSide.none,
-              ),
-            ),
+          MatchesSearchBar(
+            onChanged: (value) {
+              setState(() {
+                search = value;
+              });
+            },
           ),
 
-          const SizedBox(height: 20),
+          const SizedBox(height: 16),
 
-          SizedBox(
-            height: 44,
-            child: ListView(
-              scrollDirection: Axis.horizontal,
-              children: const [
-                _DayChip("Ma", true),
-                SizedBox(width: 10),
-                _DayChip("Holnap", false),
-                SizedBox(width: 10),
-                _DayChip("Kedd", false),
-                SizedBox(width: 10),
-                _DayChip("Szerda", false),
-                SizedBox(width: 10),
-                _DayChip("Csüt.", false),
-              ],
-            ),
+          DaySelector(
+            selectedIndex: selectedDay,
+            onSelected: (index) {
+              setState(() {
+                selectedDay = index;
+              });
+            },
+          ),
+
+          const SizedBox(height: 16),
+
+          FilterBar(
+            selectedIndex: selectedFilter,
+            onSelected: (index) {
+              setState(() {
+                selectedFilter = index;
+              });
+            },
           ),
 
           const SizedBox(height: 24),
 
-          const Text(
-            "Premier League",
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-            ),
+          const LeagueHeader(
+            leagueName: "Premier League",
+            country: "Anglia",
+            matchCount: 2,
           ),
 
-          const SizedBox(height: 12),
-
-          const _MatchCard(
-            home: "Liverpool",
-            away: "Chelsea",
-            time: "18:30",
-            ai: "94%",
-            value: true,
+          MatchCard(
+            homeTeam: "Liverpool",
+            awayTeam: "Chelsea",
+            matchTime: "18:30",
+            aiScore: "94%",
+            isValueBet: true,
+            onTap: () {},
           ),
 
-          const _MatchCard(
-            home: "Arsenal",
-            away: "Tottenham",
-            time: "21:00",
-            ai: "87%",
-            value: false,
+          MatchCard(
+            homeTeam: "Arsenal",
+            awayTeam: "Tottenham",
+            matchTime: "21:00",
+            aiScore: "88%",
+            isValueBet: false,
+            onTap: () {},
           ),
 
-          const SizedBox(height: 24),
-
-          const Text(
-            "La Liga",
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-            ),
+          const LeagueHeader(
+            leagueName: "La Liga",
+            country: "Spanyolország",
+            matchCount: 1,
           ),
 
-          const SizedBox(height: 12),
-
-          const _MatchCard(
-            home: "Barcelona",
-            away: "Valencia",
-            time: "20:45",
-            ai: "89%",
-            value: true,
+          MatchCard(
+            homeTeam: "Barcelona",
+            awayTeam: "Valencia",
+            matchTime: "20:45",
+            aiScore: "91%",
+            isValueBet: true,
+            onTap: () {},
           ),
         ],
-      ),
-    );
-  }
-}
-
-class _DayChip extends StatelessWidget {
-  final String text;
-  final bool selected;
-
-  const _DayChip(this.text, this.selected);
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 18),
-      decoration: BoxDecoration(
-        color: selected ? Colors.blue : Colors.white,
-        borderRadius: BorderRadius.circular(22),
-      ),
-      child: Center(
-        child: Text(
-          text,
-          style: TextStyle(
-            color: selected ? Colors.white : Colors.black87,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _MatchCard extends StatelessWidget {
-  final String home;
-  final String away;
-  final String time;
-  final String ai;
-  final bool value;
-
-  const _MatchCard({
-    required this.home,
-    required this.away,
-    required this.time,
-    required this.ai,
-    required this.value,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      elevation: 0,
-      margin: const EdgeInsets.only(bottom: 14),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(18),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(18),
-        child: Row(
-          children: [
-            const CircleAvatar(
-              radius: 24,
-              child: Icon(Icons.sports_soccer),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    "$home  vs  $away",
-                    style: const TextStyle(
-                      fontSize: 17,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    time,
-                    style: const TextStyle(color: Colors.grey),
-                  ),
-                ],
-              ),
-            ),
-            Column(
-              children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 8,
-                  ),
-                  decoration: BoxDecoration(
-                    color: Colors.green,
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                  child: Text(
-                    ai,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-                if (value)
-                  Container(
-                    margin: const EdgeInsets.only(top: 8),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 4,
-                    ),
-                    decoration: BoxDecoration(
-                      color: Colors.green.shade50,
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: const Text(
-                      "VALUE",
-                      style: TextStyle(
-                        color: Colors.green,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 11,
-                      ),
-                    ),
-                  ),
-              ],
-            ),
-          ],
-        ),
       ),
     );
   }
