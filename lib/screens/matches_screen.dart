@@ -1,16 +1,19 @@
 // ===========================================
 // ZSOLT AI PRO 3
-// Version: v0.3.6
+// Version: v0.4.3
 // File: lib/screens/matches_screen.dart
 // ===========================================
 
 import 'package:flutter/material.dart';
 
-import 'matches/widgets/search_bar.dart';
+import '../models/app_match.dart';
+import '../repositories/match_repository.dart';
+
 import 'matches/widgets/day_selector.dart';
 import 'matches/widgets/filter_bar.dart';
 import 'matches/widgets/league_header.dart';
 import 'matches/widgets/match_card.dart';
+import 'matches/widgets/search_bar.dart';
 
 class MatchesScreen extends StatefulWidget {
   const MatchesScreen({super.key});
@@ -20,9 +23,19 @@ class MatchesScreen extends StatefulWidget {
 }
 
 class _MatchesScreenState extends State<MatchesScreen> {
+  final MatchRepository _repository = const MatchRepository();
+
+  late Future<List<AppMatch>> _matchesFuture;
+
   int selectedDay = 0;
   int selectedFilter = 0;
   String search = "";
+
+  @override
+  void initState() {
+    super.initState();
+    _matchesFuture = _repository.getMatches();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -39,78 +52,120 @@ class _MatchesScreenState extends State<MatchesScreen> {
           ),
         ),
       ),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
+      body: Column(
         children: [
-          MatchesSearchBar(
-            onChanged: (value) {
-              setState(() {
-                search = value;
-              });
-            },
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+            child: Column(
+              children: [
+                MatchesSearchBar(
+                  onChanged: (value) {
+                    setState(() {
+                      search = value;
+                    });
+                  },
+                ),
+                const SizedBox(height: 16),
+                DaySelector(
+                  selectedIndex: selectedDay,
+                  onSelected: (index) {
+                    setState(() {
+                      selectedDay = index;
+                    });
+                  },
+                ),
+                const SizedBox(height: 16),
+                FilterBar(
+                  selectedIndex: selectedFilter,
+                  onSelected: (index) {
+                    setState(() {
+                      selectedFilter = index;
+                    });
+                  },
+                ),
+              ],
+            ),
           ),
-
           const SizedBox(height: 16),
+          Expanded(
+            child: FutureBuilder<List<AppMatch>>(
+              future: _matchesFuture,
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(
+                    child: CircularProgressIndicator(),
+                  );
+                }
 
-          DaySelector(
-            selectedIndex: selectedDay,
-            onSelected: (index) {
-              setState(() {
-                selectedDay = index;
-              });
-            },
-          ),
+                if (snapshot.hasError) {
+                  return Center(
+                    child: Text(
+                      "Hiba történt:\n${snapshot.error}",
+                      textAlign: TextAlign.center,
+                    ),
+                  );
+                }
 
-          const SizedBox(height: 16),
+                final matches = snapshot.data ?? [];
 
-          FilterBar(
-            selectedIndex: selectedFilter,
-            onSelected: (index) {
-              setState(() {
-                selectedFilter = index;
-              });
-            },
-          ),
+                if (matches.isEmpty) {
+                  return const Center(
+                    child: Text("Nincs elérhető mérkőzés."),
+                  );
+                }
 
-          const SizedBox(height: 24),
+                final filtered = matches.where((match) {
+                  if (search.isEmpty) return true;
 
-          const LeagueHeader(
-            leagueName: "Premier League",
-            country: "Anglia",
-            matchCount: 2,
-          ),
+                  final text = search.toLowerCase();
 
-          MatchCard(
-            homeTeam: "Liverpool",
-            awayTeam: "Chelsea",
-            matchTime: "18:30",
-            aiScore: "94%",
-            isValueBet: true,
-            onTap: () {},
-          ),
+                  return match.homeTeam.toLowerCase().contains(text) ||
+                      match.awayTeam.toLowerCase().contains(text) ||
+                      match.leagueName.toLowerCase().contains(text);
+                }).toList();
 
-          MatchCard(
-            homeTeam: "Arsenal",
-            awayTeam: "Tottenham",
-            matchTime: "21:00",
-            aiScore: "88%",
-            isValueBet: false,
-            onTap: () {},
-          ),
+                String? currentLeague;
 
-          const LeagueHeader(
-            leagueName: "La Liga",
-            country: "Spanyolország",
-            matchCount: 1,
-          ),
+                return ListView.builder(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  itemCount: filtered.length,
+                  itemBuilder: (context, index) {
+                    final match = filtered[index];
 
-          MatchCard(
-            homeTeam: "Barcelona",
-            awayTeam: "Valencia",
-            matchTime: "20:45",
-            aiScore: "91%",
-            isValueBet: true,
-            onTap: () {},
+                    final showLeague =
+                        currentLeague != match.leagueName;
+
+                    if (showLeague) {
+                      currentLeague = match.leagueName;
+
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          LeagueHeader(
+                            leagueName: match.leagueName,
+                            country: match.country,
+                            matchCount: filtered
+                                .where((m) =>
+                                    m.leagueName ==
+                                    match.leagueName)
+                                .length,
+                          ),
+                          MatchCard(
+                            match: match,
+                            onTap: () {},
+                          ),
+                        ],
+                      );
+                    }
+
+                    return MatchCard(
+                      match: match,
+                      onTap: () {},
+                    );
+                  },
+                );
+              },
+            ),
           ),
         ],
       ),
