@@ -1,12 +1,17 @@
 // ===========================================
 // ZSOLT AI PRO 3
-// Version: v0.5.5
+// Version: v0.6.0
 // File: lib/screens/match_detail_screen.dart
 // ===========================================
 
 import 'package:flutter/material.dart';
 
 import '../models/app_match.dart';
+
+import '../widgets/match_detail/ai_statistics_card.dart';
+import '../widgets/match_detail/form_card.dart';
+import '../widgets/match_detail/h2h_card.dart';
+import '../widgets/match_detail/match_statistics_card.dart';
 import '../widgets/match_detail/odds_card.dart';
 
 class MatchDetailScreen extends StatelessWidget {
@@ -24,15 +29,15 @@ class MatchDetailScreen extends StatelessWidget {
       appBar: AppBar(
         elevation: 0,
         backgroundColor: Colors.white,
+        iconTheme: const IconThemeData(
+          color: Colors.black87,
+        ),
         title: const Text(
           "Mérkőzés részletei",
           style: TextStyle(
             color: Colors.black87,
             fontWeight: FontWeight.bold,
           ),
-        ),
-        iconTheme: const IconThemeData(
-          color: Colors.black87,
         ),
       ),
       body: SingleChildScrollView(
@@ -68,12 +73,12 @@ class MatchDetailScreen extends StatelessWidget {
                           children: [
 
                             CircleAvatar(
-                              radius: 28,
+                              radius: 30,
                               backgroundColor:
                                   Colors.blue.shade50,
                               child: const Icon(
                                 Icons.shield,
-                                size: 32,
+                                size: 34,
                                 color: Color(0xFF1976D2),
                               ),
                             ),
@@ -85,6 +90,7 @@ class MatchDetailScreen extends StatelessWidget {
                               textAlign: TextAlign.center,
                               style: const TextStyle(
                                 fontWeight: FontWeight.bold,
+                                fontSize: 16,
                               ),
                             ),
                           ],
@@ -92,12 +98,13 @@ class MatchDetailScreen extends StatelessWidget {
                       ),
 
                       const Padding(
-                        padding:
-                            EdgeInsets.symmetric(horizontal: 12),
+                        padding: EdgeInsets.symmetric(
+                          horizontal: 14,
+                        ),
                         child: Text(
                           "VS",
                           style: TextStyle(
-                            fontSize: 22,
+                            fontSize: 24,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
@@ -108,12 +115,12 @@ class MatchDetailScreen extends StatelessWidget {
                           children: [
 
                             CircleAvatar(
-                              radius: 28,
+                              radius: 30,
                               backgroundColor:
                                   Colors.blue.shade50,
                               child: const Icon(
                                 Icons.shield,
-                                size: 32,
+                                size: 34,
                                 color: Color(0xFF1976D2),
                               ),
                             ),
@@ -125,6 +132,7 @@ class MatchDetailScreen extends StatelessWidget {
                               textAlign: TextAlign.center,
                               style: const TextStyle(
                                 fontWeight: FontWeight.bold,
+                                fontSize: 16,
                               ),
                             ),
                           ],
@@ -148,7 +156,7 @@ class MatchDetailScreen extends StatelessWidget {
                     child: Text(
                       "${match.kickoff.day.toString().padLeft(2, '0')}."
                       "${match.kickoff.month.toString().padLeft(2, '0')}."
-                      "${match.kickoff.year}  "
+                      "${match.kickoff.year} "
                       "${match.kickoff.hour.toString().padLeft(2, '0')}:"
                       "${match.kickoff.minute.toString().padLeft(2, '0')}",
                     ),
@@ -159,66 +167,21 @@ class MatchDetailScreen extends StatelessWidget {
 
             const SizedBox(height: 18),
 
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(18),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: Column(
-                children: [
-
-                  const Text(
-                    "AI Elemzés",
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-
-                  const SizedBox(height: 18),
-
-                  SizedBox(
-                    width: 120,
-                    height: 120,
-                    child: Stack(
-                      fit: StackFit.expand,
-                      children: [
-
-                        CircularProgressIndicator(
-                          value: match.aiScore / 100,
-                          strokeWidth: 10,
-                        ),
-
-                        Center(
-                          child: Text(
-                            "${match.aiScore}%",
-                            style: const TextStyle(
-                              fontSize: 24,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-
-                  const SizedBox(height: 18),
-
-                  Text(
-                    "AI ajánlás: ${match.prediction}",
-                    style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),                ],
-              ),
+            AiStatisticsCard(
+              match: match,
             ),
 
-            const SizedBox(height: 18),
-
             OddsCard(
+              match: match,
+            ),
+
+            FormCard(
+              match: match,
+            ),
+
+            H2HCard(
+              match: match,
+            ),            MatchStatisticsCard(
               match: match,
             ),
 
@@ -236,12 +199,12 @@ class MatchDetailScreen extends StatelessWidget {
                   const Row(
                     children: [
                       Icon(
-                        Icons.info_outline,
+                        Icons.psychology,
                         color: Color(0xFF1976D2),
                       ),
                       SizedBox(width: 8),
                       Text(
-                        "AI Információ",
+                        "AI Elemzés",
                         style: TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
@@ -253,11 +216,52 @@ class MatchDetailScreen extends StatelessWidget {
                   const SizedBox(height: 16),
 
                   Text(
-                    match.valueBet
-                        ? "Ez a mérkőzés AI Value Bet lehetőségként lett megjelölve. A jelenlegi adatok alapján pozitív érték várható."
-                        : "Az AI jelenleg nem jelölt kiemelt Value Bet lehetőséget erre a mérkőzésre.",
+                    "Az AI jelenlegi értékelése alapján "
+                    "${match.homeTeam} nagyobb eséllyel érhet el kedvező eredményt. "
+                    "Az ajánlás figyelembe veszi az AI pontszámot, "
+                    "a szorzókat és a jelenlegi formaadatokat.",
                     style: const TextStyle(
                       height: 1.5,
+                    ),
+                  ),
+
+                  const SizedBox(height: 16),
+
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: match.valueBet
+                          ? Colors.orange.shade100
+                          : Colors.grey.shade100,
+                      borderRadius:
+                          BorderRadius.circular(14),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          match.valueBet
+                              ? Icons.workspace_premium
+                              : Icons.info_outline,
+                          color: match.valueBet
+                              ? Colors.orange
+                              : Colors.blue,
+                        ),
+
+                        const SizedBox(width: 10),
+
+                        Expanded(
+                          child: Text(
+                            match.valueBet
+                                ? "AI Value Bet lehetőség azonosítva."
+                                : "Jelenleg nincs kiemelt Value Bet ajánlás.",
+                            style: const TextStyle(
+                              fontWeight:
+                                  FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ],
@@ -276,31 +280,29 @@ class MatchDetailScreen extends StatelessWidget {
               child: const Column(
                 children: [
                   Icon(
-                    Icons.construction,
+                    Icons.rocket_launch,
                     size: 42,
                     color: Color(0xFF1976D2),
                   ),
                   SizedBox(height: 12),
                   Text(
-                    "Hamarosan érkezik",
+                    "Hamarosan",
                     style: TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
-                  SizedBox(height: 10),
+                  SizedBox(height: 12),
                   Text(
-                    "• Részletes statisztikák\n"
-                    "• Csapatforma\n"
-                    "• Egymás elleni mérkőzések (H2H)\n"
-                    "• Sérülések\n"
-                    "• Kezdőcsapatok\n"
-                    "• AI Engine 3.0 elemzés\n"
-                    "• Élő események",
+                    "• Sérülések és hiányzók\n"
+                    "• Várható kezdőcsapatok\n"
+                    "• Élő statisztikák\n"
+                    "• AI Engine 2.0\n"
+                    "• API alapú elemzés\n"
+                    "• Élő eseménykövetés",
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       height: 1.6,
-                      color: Colors.black87,
                     ),
                   ),
                 ],
