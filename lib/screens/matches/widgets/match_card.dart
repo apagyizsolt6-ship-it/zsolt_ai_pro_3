@@ -1,6 +1,6 @@
 // ===========================================
 // ZSOLT AI PRO 3
-// Version: v0.4.3
+// Version: v0.5.2
 // File: lib/screens/matches/widgets/match_card.dart
 // ===========================================
 
@@ -22,16 +22,16 @@ class MatchCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final confidenceColor = match.aiScore >= 90
+    final confidenceColor = match.isHighConfidence
         ? Colors.green
-        : match.aiScore >= 75
+        : match.isMediumConfidence
             ? Colors.orange
             : Colors.red;
 
     return Card(
       elevation: 0,
-      color: Colors.white,
       margin: const EdgeInsets.only(bottom: 14),
+      color: Colors.white,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(18),
       ),
@@ -74,8 +74,8 @@ class MatchCard extends StatelessWidget {
                     Text(
                       match.awayTeam,
                       style: TextStyle(
-                        fontSize: 15,
                         color: Colors.grey.shade700,
+                        fontSize: 15,
                       ),
                     ),
 
@@ -100,12 +100,14 @@ class MatchCard extends StatelessWidget {
 
                     if (match.hasOdds) ...[
                       const SizedBox(height: 8),
-                      Text(
-                        "${match.homeOdd}   ${match.drawOdd}   ${match.awayOdd}",
-                        style: const TextStyle(
-                          fontWeight: FontWeight.w600,
-                          color: Colors.black87,
-                        ),
+                      Row(
+                        children: [
+                          _odd(match.homeOdd!),
+                          const SizedBox(width: 6),
+                          _odd(match.drawOdd!),
+                          const SizedBox(width: 6),
+                          _odd(match.awayOdd!),
+                        ],
                       ),
                     ],
                   ],
@@ -124,7 +126,6 @@ class MatchCard extends StatelessWidget {
                       color: match.favourite
                           ? Colors.amber
                           : Colors.grey,
-                      size: 26,
                     ),
                   ),
 
@@ -148,9 +149,8 @@ class MatchCard extends StatelessWidget {
                     ),
                   ),
 
-                  const SizedBox(height: 8),
-
-                  if (match.valueBet)
+                  if (match.valueBet) ...[
+                    const SizedBox(height: 8),
                     Container(
                       padding: const EdgeInsets.symmetric(
                         horizontal: 10,
@@ -169,13 +169,14 @@ class MatchCard extends StatelessWidget {
                         ),
                       ),
                     ),
+                  ],
 
-                  if (match.live)
+                  if (match.live) ...[
+                    const SizedBox(height: 8),
                     Container(
-                      margin: const EdgeInsets.only(top: 6),
                       padding: const EdgeInsets.symmetric(
                         horizontal: 10,
-                        vertical: 4,
+                        vertical: 5,
                       ),
                       decoration: BoxDecoration(
                         color: Colors.red,
@@ -186,14 +187,35 @@ class MatchCard extends StatelessWidget {
                         style: TextStyle(
                           color: Colors.white,
                           fontWeight: FontWeight.bold,
-                          fontSize: 10,
+                          fontSize: 11,
                         ),
                       ),
                     ),
+                  ],
                 ],
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _odd(double odd) {
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: 10,
+        vertical: 5,
+      ),
+      decoration: BoxDecoration(
+        color: Colors.blue.shade50,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Text(
+        odd.toStringAsFixed(2),
+        style: const TextStyle(
+          fontWeight: FontWeight.bold,
+          color: Color(0xFF1976D2),
         ),
       ),
     );
