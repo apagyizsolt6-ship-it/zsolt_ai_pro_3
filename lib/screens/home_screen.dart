@@ -1,19 +1,19 @@
 // ===========================================
 // ZSOLT AI PRO 3
-// Version: v0.2.0
+// Version: v0.2.1
 // File: lib/screens/home_screen.dart
 // ===========================================
 
 import 'package:flutter/material.dart';
 
-import 'home/widgets/welcome_card.dart';
-import 'home/widgets/ai_tip_card.dart';
 import 'home/widgets/ai_score_card.dart';
-import 'home/widgets/quick_actions_card.dart';
+import 'home/widgets/ai_tip_card.dart';
+import 'home/widgets/news_card.dart';
 import 'home/widgets/next_matches_card.dart';
+import 'home/widgets/quick_actions_card.dart';
 import 'home/widgets/top_tips_card.dart';
 import 'home/widgets/value_bet_card.dart';
-import 'home/widgets/new_card.dart';
+import 'home/widgets/welcome_card.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -22,7 +22,6 @@ class HomeScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF5F7FB),
-
       body: SafeArea(
         child: RefreshIndicator(
           onRefresh: () async {
@@ -30,60 +29,48 @@ class HomeScreen extends StatelessWidget {
               const Duration(milliseconds: 800),
             );
           },
-
           child: ListView(
             physics: const AlwaysScrollableScrollPhysics(),
-
             padding: const EdgeInsets.fromLTRB(
               20,
               18,
               20,
               28,
             ),
+            children: [
+              const WelcomeCard(),
 
-            children: const [
+              const SizedBox(height: 18),
 
-              /// Welcome
-              WelcomeCard(),
+              const AiTipCard(),
 
-              SizedBox(height: 18),
+              const SizedBox(height: 18),
 
-              /// AI Tipp
-              AiTipCard(),
+              const AiScoreCard(),
 
-              SizedBox(height: 18),
+              const SizedBox(height: 18),
 
-              /// AI Score
-              AiScoreCard(),
+              const QuickActionsCard(),
 
-              SizedBox(height: 18),
+              const SizedBox(height: 18),
 
-              /// Gyors műveletek
-              QuickActionsCard(),
+              const NextMatchesCard(),
 
-              SizedBox(height: 18),
+              const SizedBox(height: 18),
 
-              /// Következő meccsek
-              NextMatchesCard(),
+              const TopTipsCard(),
 
-              SizedBox(height: 18),
+              const SizedBox(height: 18),
 
-              /// Top Tippek
-              TopTipsCard(),
+              const ValueBetCard(),
 
-              SizedBox(height: 18),
+              const SizedBox(height: 18),
 
-              /// Value Bet
-              ValueBetCard(),
+              const NewsCard(),
 
-              SizedBox(height: 18),
+              const SizedBox(height: 28),
 
-              /// Hírek
-              NewsCard(),
-
-              SizedBox(height: 28),
-
-              Center(
+              const Center(
                 child: Text(
                   "ZSOLT AI PRO 3",
                   style: TextStyle(
@@ -93,18 +80,18 @@ class HomeScreen extends StatelessWidget {
                 ),
               ),
 
-              SizedBox(height: 6),
+              const SizedBox(height: 6),
 
-              Center(
+              const Center(
                 child: Text(
-                  "Version 0.2.0",
+                  "Version 0.2.1",
                   style: TextStyle(
                     color: Colors.grey,
                   ),
                 ),
               ),
 
-              SizedBox(height: 20),
+              const SizedBox(height: 20),
             ],
           ),
         ),
