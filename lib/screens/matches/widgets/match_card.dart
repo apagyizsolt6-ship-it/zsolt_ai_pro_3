@@ -1,31 +1,31 @@
 // ===========================================
 // ZSOLT AI PRO 3
-// Version: v0.3.5
+// Version: v0.4.2
 // File: lib/screens/matches/widgets/match_card.dart
 // ===========================================
 
 import 'package:flutter/material.dart';
 
+import '../../../models/app_match.dart';
+
 class MatchCard extends StatelessWidget {
-  final String homeTeam;
-  final String awayTeam;
-  final String matchTime;
-  final String aiScore;
-  final bool isValueBet;
+  final AppMatch match;
   final VoidCallback? onTap;
 
   const MatchCard({
     super.key,
-    required this.homeTeam,
-    required this.awayTeam,
-    required this.matchTime,
-    required this.aiScore,
-    required this.isValueBet,
+    required this.match,
     this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
+    final confidenceColor = match.aiScore >= 90
+        ? Colors.green
+        : match.aiScore >= 75
+            ? Colors.orange
+            : Colors.red;
+
     return Card(
       elevation: 0,
       color: Colors.white,
@@ -41,8 +41,8 @@ class MatchCard extends StatelessWidget {
           child: Row(
             children: [
               Container(
-                width: 52,
-                height: 52,
+                width: 54,
+                height: 54,
                 decoration: BoxDecoration(
                   color: const Color(0xFF1976D2).withValues(alpha: 0.10),
                   borderRadius: BorderRadius.circular(14),
@@ -60,7 +60,7 @@ class MatchCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      homeTeam,
+                      match.homeTeam,
                       style: const TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
@@ -70,7 +70,7 @@ class MatchCard extends StatelessWidget {
                     const SizedBox(height: 4),
 
                     Text(
-                      awayTeam,
+                      match.awayTeam,
                       style: TextStyle(
                         fontSize: 15,
                         color: Colors.grey.shade700,
@@ -83,18 +83,29 @@ class MatchCard extends StatelessWidget {
                       children: [
                         const Icon(
                           Icons.schedule,
-                          size: 16,
+                          size: 15,
                           color: Colors.grey,
                         ),
-                        const SizedBox(width: 4),
+                        const SizedBox(width: 5),
                         Text(
-                          matchTime,
+                          "${match.kickoff.hour.toString().padLeft(2, '0')}:${match.kickoff.minute.toString().padLeft(2, '0')}",
                           style: const TextStyle(
                             color: Colors.grey,
                           ),
                         ),
                       ],
                     ),
+
+                    if (match.hasOdds) ...[
+                      const SizedBox(height: 8),
+                      Text(
+                        "${match.homeOdd}   ${match.drawOdd}   ${match.awayOdd}",
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w600,
+                          color: Colors.black87,
+                        ),
+                      ),
+                    ],
                   ],
                 ),
               ),
@@ -108,11 +119,11 @@ class MatchCard extends StatelessWidget {
                       vertical: 8,
                     ),
                     decoration: BoxDecoration(
-                      color: Colors.green,
+                      color: confidenceColor,
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Text(
-                      aiScore,
+                      "${match.aiScore}%",
                       style: const TextStyle(
                         color: Colors.white,
                         fontWeight: FontWeight.bold,
@@ -122,7 +133,7 @@ class MatchCard extends StatelessWidget {
 
                   const SizedBox(height: 8),
 
-                  if (isValueBet)
+                  if (match.valueBet)
                     Container(
                       padding: const EdgeInsets.symmetric(
                         horizontal: 10,
@@ -138,6 +149,27 @@ class MatchCard extends StatelessWidget {
                           color: Colors.orange,
                           fontWeight: FontWeight.bold,
                           fontSize: 11,
+                        ),
+                      ),
+                    ),
+
+                  if (match.live)
+                    Container(
+                      margin: const EdgeInsets.only(top: 6),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.red,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: const Text(
+                        "ÉLŐ",
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 10,
                         ),
                       ),
                     ),
