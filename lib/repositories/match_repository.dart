@@ -1,6 +1,6 @@
 // ===========================================
 // ZSOLT AI PRO 3
-// Version: v0.4.1
+// Version: v0.5.1
 // File: lib/repositories/match_repository.dart
 // ===========================================
 
@@ -9,10 +9,6 @@ import '../models/app_match.dart';
 class MatchRepository {
   const MatchRepository();
 
-  /// Ide kerül majd a valódi API-hívás.
-  ///
-  /// Jelenleg mintaadatokat ad vissza, hogy a UI
-  /// már AppMatch objektumokkal működjön.
   Future<List<AppMatch>> getMatches() async {
     await Future.delayed(const Duration(milliseconds: 500));
 
@@ -89,5 +85,51 @@ class MatchRepository {
     } catch (_) {
       return null;
     }
+  }
+
+  Future<List<AppMatch>> toggleFavourite(
+    List<AppMatch> matches,
+    int matchId,
+  ) async {
+    return matches.map((match) {
+      if (match.id != matchId) {
+        return match;
+      }
+
+      return match.copyWith(
+        favourite: !match.favourite,
+      );
+    }).toList();
+  }
+
+  List<AppMatch> favouritesOnly(
+    List<AppMatch> matches,
+  ) {
+    return matches
+        .where((match) => match.favourite)
+        .toList();
+  }
+
+  List<AppMatch> search(
+    List<AppMatch> matches,
+    String query,
+  ) {
+    if (query.trim().isEmpty) {
+      return matches;
+    }
+
+    final q = query.toLowerCase();
+
+    return matches.where((match) {
+      return match.homeTeam
+              .toLowerCase()
+              .contains(q) ||
+          match.awayTeam
+              .toLowerCase()
+              .contains(q) ||
+          match.leagueName
+              .toLowerCase()
+              .contains(q);
+    }).toList();
   }
 }
