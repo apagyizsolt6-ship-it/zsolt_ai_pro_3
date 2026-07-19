@@ -1,6 +1,6 @@
 // ===========================================
 // ZSOLT AI PRO 3
-// Version: v0.4.3
+// Version: v0.5.3
 // File: lib/screens/matches_screen.dart
 // ===========================================
 
@@ -25,20 +25,80 @@ class MatchesScreen extends StatefulWidget {
 class _MatchesScreenState extends State<MatchesScreen> {
   final MatchRepository _repository = const MatchRepository();
 
-  late Future<List<AppMatch>> _matchesFuture;
+  List<AppMatch> _matches = [];
+
+  bool _loading = true;
+  bool _onlyFavourites = false;
 
   int selectedDay = 0;
   int selectedFilter = 0;
+
   String search = "";
 
   @override
   void initState() {
     super.initState();
-    _matchesFuture = _repository.getMatches();
+    _loadMatches();
+  }
+
+  Future<void> _loadMatches() async {
+    try {
+      final matches = await _repository.getMatches();
+
+      setState(() {
+        _matches = matches;
+        _loading = false;
+      });
+    } catch (_) {
+      setState(() {
+        _loading = false;
+      });
+    }
+  }
+
+  void _toggleFavourite(AppMatch match) {
+    setState(() {
+      _matches = _matches.map((m) {
+        if (m.id != match.id) return m;
+
+        return m.copyWith(
+          favourite: !m.favourite,
+        );
+      }).toList();
+    });
+  }
+
+  List<AppMatch> get _filteredMatches {
+    List<AppMatch> result = List.from(_matches);
+
+    if (search.trim().isNotEmpty) {
+      result = _repository.search(
+        result,
+        search,
+      );
+    }
+
+    if (_onlyFavourites) {
+      result = _repository.favouritesOnly(
+        result,
+      );
+    }
+
+    return result;
   }
 
   @override
   Widget build(BuildContext context) {
+    if (_loading) {
+      return const Scaffold(
+        body: Center(
+          child: CircularProgressIndicator(),
+        ),
+      );
+    }
+
+    final filtered = _filteredMatches;
+
     return Scaffold(
       backgroundColor: const Color(0xFFF5F7FB),
       appBar: AppBar(
@@ -55,7 +115,12 @@ class _MatchesScreenState extends State<MatchesScreen> {
       body: Column(
         children: [
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+            padding: const EdgeInsets.fromLTRB(
+              16,
+              16,
+              16,
+              0,
+            ),
             child: Column(
               children: [
                 MatchesSearchBar(
@@ -65,7 +130,9 @@ class _MatchesScreenState extends State<MatchesScreen> {
                     });
                   },
                 ),
+
                 const SizedBox(height: 16),
+
                 DaySelector(
                   selectedIndex: selectedDay,
                   onSelected: (index) {
@@ -74,101 +141,96 @@ class _MatchesScreenState extends State<MatchesScreen> {
                     });
                   },
                 ),
+
                 const SizedBox(height: 16),
+
                 FilterBar(
                   selectedIndex: selectedFilter,
                   onSelected: (index) {
                     setState(() {
                       selectedFilter = index;
+
+                      _onlyFavourites =
+                          index == 1;
                     });
                   },
                 ),
               ],
             ),
           ),
+
           const SizedBox(height: 16),
+
           Expanded(
-            child: FutureBuilder<List<AppMatch>>(
-              future: _matchesFuture,
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(
-                    child: CircularProgressIndicator(),
-                  );
-                }
-
-                if (snapshot.hasError) {
-                  return Center(
+            child: filtered.isEmpty
+                ? const Center(
                     child: Text(
-                      "Hiba történt:\n${snapshot.error}",
-                      textAlign: TextAlign.center,
+                      "Nincs találat.",
                     ),
-                  );
-                }
-
-                final matches = snapshot.data ?? [];
-
-                if (matches.isEmpty) {
-                  return const Center(
-                    child: Text("Nincs elérhető mérkőzés."),
-                  );
-                }
-
-                final filtered = matches.where((match) {
-                  if (search.isEmpty) return true;
-
-                  final text = search.toLowerCase();
-
-                  return match.homeTeam.toLowerCase().contains(text) ||
-                      match.awayTeam.toLowerCase().contains(text) ||
-                      match.leagueName.toLowerCase().contains(text);
-                }).toList();
-
-                String? currentLeague;
-
-                return ListView.builder(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  itemCount: filtered.length,
-                  itemBuilder: (context, index) {
-                    final match = filtered[index];
-
-                    final showLeague =
-                        currentLeague != match.leagueName;
-
-                    if (showLeague) {
-                      currentLeague = match.leagueName;
-
-                      return Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          LeagueHeader(
-                            leagueName: match.leagueName,
-                            country: match.country,
-                            matchCount: filtered
-                                .where((m) =>
-                                    m.leagueName ==
-                                    match.leagueName)
-                                .length,
-                          ),
-                          MatchCard(
-                            match: match,
-                            onTap: () {},
-                          ),
-                        ],
-                      );
-                    }
-
-                    return MatchCard(
-                      match: match,
-                      onTap: () {},
-                    );
-                  },
-                );
-              },
-            ),
+                  )
+                : _buildMatchList(filtered),
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildMatchList(
+    List<AppMatch> matches,
+  ) {
+    String? currentLeague;
+
+    return ListView.builder(
+      padding: const EdgeInsets.symmetric(
+        horizontal: 16,
+      ),
+      itemCount: matches.length,
+      itemBuilder: (context, index) {
+        final match = matches[index];
+
+        final showLeague =
+            currentLeague != match.leagueName;
+
+        if (showLeague) {
+          currentLeague = match.leagueName;          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              LeagueHeader(
+                leagueName: match.leagueName,
+                country: match.country,
+                matchCount: matches
+                    .where(
+                      (m) =>
+                          m.leagueName ==
+                          match.leagueName,
+                    )
+                    .length,
+              ),
+              MatchCard(
+                match: match,
+                onTap: () {
+                  // TODO:
+                  // Match Detail képernyő
+                },
+                onFavouriteTap: () {
+                  _toggleFavourite(match);
+                },
+              ),
+            ],
+          );
+        }
+
+        return MatchCard(
+          match: match,
+          onTap: () {
+            // TODO:
+            // Match Detail képernyő
+          },
+          onFavouriteTap: () {
+            _toggleFavourite(match);
+          },
+        );
+      },
     );
   }
 }
