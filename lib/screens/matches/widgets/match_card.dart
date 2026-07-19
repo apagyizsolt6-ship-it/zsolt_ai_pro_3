@@ -1,6 +1,6 @@
 // ===========================================
 // ZSOLT AI PRO 3
-// Version: v0.4.2
+// Version: v0.4.3
 // File: lib/screens/matches/widgets/match_card.dart
 // ===========================================
 
@@ -11,11 +11,13 @@ import '../../../models/app_match.dart';
 class MatchCard extends StatelessWidget {
   final AppMatch match;
   final VoidCallback? onTap;
+  final VoidCallback? onFavouriteTap;
 
   const MatchCard({
     super.key,
     required this.match,
     this.onTap,
+    this.onFavouriteTap,
   });
 
   @override
@@ -113,6 +115,21 @@ class MatchCard extends StatelessWidget {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
+                  GestureDetector(
+                    onTap: onFavouriteTap,
+                    child: Icon(
+                      match.favourite
+                          ? Icons.star
+                          : Icons.star_border_rounded,
+                      color: match.favourite
+                          ? Colors.amber
+                          : Colors.grey,
+                      size: 26,
+                    ),
+                  ),
+
+                  const SizedBox(height: 10),
+
                   Container(
                     padding: const EdgeInsets.symmetric(
                       horizontal: 12,
