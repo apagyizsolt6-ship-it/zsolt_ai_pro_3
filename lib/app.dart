@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'core/constants/app_constants.dart';
 import 'core/theme/app_theme.dart';
+import 'screens/splash_screen.dart';
 
 class ZsoltAiProApp extends StatelessWidget {
   const ZsoltAiProApp({super.key});
@@ -14,17 +15,7 @@ class ZsoltAiProApp extends StatelessWidget {
       theme: AppTheme.lightTheme,
       darkTheme: AppTheme.darkTheme,
       themeMode: ThemeMode.dark,
-      home: const Scaffold(
-        body: Center(
-          child: Text(
-            AppConstants.appName,
-            style: TextStyle(
-              fontSize: 28,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-        ),
-      ),
+      home: const SplashScreen(),
     );
   }
 }
