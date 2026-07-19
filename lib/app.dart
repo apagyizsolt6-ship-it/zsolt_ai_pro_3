@@ -1,23 +1,23 @@
 import 'package:flutter/material.dart';
 
+import 'core/constants/app_constants.dart';
+import 'core/theme/app_theme.dart';
+
 class ZsoltAiProApp extends StatelessWidget {
   const ZsoltAiProApp({super.key});
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Zsolt AI PRO 3',
+      title: AppConstants.appName,
       debugShowCheckedModeBanner: false,
+      theme: AppTheme.lightTheme,
+      darkTheme: AppTheme.darkTheme,
       themeMode: ThemeMode.dark,
-      theme: ThemeData(
-        useMaterial3: true,
-        colorSchemeSeed: Colors.blue,
-      ),
-      darkTheme: ThemeData.dark(useMaterial3: true),
       home: const Scaffold(
         body: Center(
           child: Text(
-            'ZSOLT AI PRO 3',
+            AppConstants.appName,
             style: TextStyle(
               fontSize: 28,
               fontWeight: FontWeight.bold,
