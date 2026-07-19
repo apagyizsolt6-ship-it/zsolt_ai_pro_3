@@ -1,13 +1,19 @@
 // ===========================================
 // ZSOLT AI PRO 3
-// Version: v0.0.6
+// Version: v0.2.0
 // File: lib/screens/home_screen.dart
 // ===========================================
 
 import 'package:flutter/material.dart';
 
-import '../core/theme/app_colors.dart';
-import '../widgets/app_card.dart';
+import 'home/widgets/welcome_card.dart';
+import 'home/widgets/ai_tip_card.dart';
+import 'home/widgets/ai_score_card.dart';
+import 'home/widgets/quick_actions_card.dart';
+import 'home/widgets/next_matches_card.dart';
+import 'home/widgets/top_tips_card.dart';
+import 'home/widgets/value_bet_card.dart';
+import 'home/widgets/new_card.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -15,199 +21,93 @@ class HomeScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
-      appBar: AppBar(
-        title: const Text("ZSOLT AI PRO 3"),
-        actions: [
-          IconButton(
-            onPressed: () {},
-            icon: const Icon(Icons.notifications_none),
-          ),
-        ],
-      ),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          Container(
-            padding: const EdgeInsets.all(22),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(24),
-              gradient: const LinearGradient(
-                colors: [
-                  AppColors.gradientStart,
-                  AppColors.gradientEnd,
-                ],
-              ),
+      backgroundColor: const Color(0xFFF5F7FB),
+
+      body: SafeArea(
+        child: RefreshIndicator(
+          onRefresh: () async {
+            await Future.delayed(
+              const Duration(milliseconds: 800),
+            );
+          },
+
+          child: ListView(
+            physics: const AlwaysScrollableScrollPhysics(),
+
+            padding: const EdgeInsets.fromLTRB(
+              20,
+              18,
+              20,
+              28,
             ),
-            child: const Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  "Üdv újra! 👋",
+
+            children: const [
+
+              /// Welcome
+              WelcomeCard(),
+
+              SizedBox(height: 18),
+
+              /// AI Tipp
+              AiTipCard(),
+
+              SizedBox(height: 18),
+
+              /// AI Score
+              AiScoreCard(),
+
+              SizedBox(height: 18),
+
+              /// Gyors műveletek
+              QuickActionsCard(),
+
+              SizedBox(height: 18),
+
+              /// Következő meccsek
+              NextMatchesCard(),
+
+              SizedBox(height: 18),
+
+              /// Top Tippek
+              TopTipsCard(),
+
+              SizedBox(height: 18),
+
+              /// Value Bet
+              ValueBetCard(),
+
+              SizedBox(height: 18),
+
+              /// Hírek
+              NewsCard(),
+
+              SizedBox(height: 28),
+
+              Center(
+                child: Text(
+                  "ZSOLT AI PRO 3",
                   style: TextStyle(
-                    color: Colors.white70,
-                    fontSize: 16,
-                  ),
-                ),
-                SizedBox(height: 8),
-                Text(
-                  "Készen állsz a mai meccsekre?",
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 26,
+                    color: Colors.grey,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
-              ],
-            ),
-          ),
+              ),
 
-          const SizedBox(height: 20),
+              SizedBox(height: 6),
 
-          const AppCard(
-            child: Column(
-              children: [
-                Icon(
-                  Icons.auto_awesome,
-                  color: AppColors.success,
-                  size: 52,
-                ),
-                SizedBox(height: 12),
-                Text(
-                  "Mai AI Tipp",
+              Center(
+                child: Text(
+                  "Version 0.2.0",
                   style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                SizedBox(height: 8),
-                Text(
-                  "Liverpool győzelem",
-                  style: TextStyle(
-                    fontSize: 18,
-                  ),
-                ),
-                SizedBox(height: 12),
-                Text(
-                  "AI Bizalom: 94%",
-                  style: TextStyle(
-                    color: AppColors.success,
-                    fontSize: 22,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-          const SizedBox(height: 18),
-
-          Row(
-            children: [
-              Expanded(
-                child: AppCard(
-                  child: Column(
-                    children: const [
-                      Icon(
-                        Icons.sports_soccer,
-                        color: AppColors.primary,
-                        size: 36,
-                      ),
-                      SizedBox(height: 10),
-                      Text(
-                        "24",
-                        style: TextStyle(
-                          fontSize: 26,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      Text("Mai meccs"),
-                    ],
+                    color: Colors.grey,
                   ),
                 ),
               ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: AppCard(
-                  child: Column(
-                    children: const [
-                      Icon(
-                        Icons.star,
-                        color: Colors.orange,
-                        size: 36,
-                      ),
-                      SizedBox(height: 10),
-                      Text(
-                        "5",
-                        style: TextStyle(
-                          fontSize: 26,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      Text("Top Tipp"),
-                    ],
-                  ),
-                ),
-              ),
+
+              SizedBox(height: 20),
             ],
           ),
-
-          const SizedBox(height: 20),
-
-          const Text(
-            "Következő mérkőzések",
-            style: TextStyle(
-              fontSize: 22,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-
-          const SizedBox(height: 12),
-
-          const AppCard(
-            child: ListTile(
-              leading: CircleAvatar(
-                backgroundColor: AppColors.primary,
-                child: Icon(
-                  Icons.sports_soccer,
-                  color: Colors.white,
-                ),
-              ),
-              title: Text("Liverpool - Chelsea"),
-              subtitle: Text("Premier League"),
-              trailing: Text(
-                "18:30",
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
-          ),
-
-          const SizedBox(height: 12),
-
-          const AppCard(
-            child: ListTile(
-              leading: CircleAvatar(
-                backgroundColor: AppColors.success,
-                child: Icon(
-                  Icons.sports_soccer,
-                  color: Colors.white,
-                ),
-              ),
-              title: Text("Barcelona - Valencia"),
-              subtitle: Text("La Liga"),
-              trailing: Text(
-                "21:00",
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
-          ),
-
-          const SizedBox(height: 30),
-        ],
+        ),
       ),
     );
   }
