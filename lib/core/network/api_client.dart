@@ -1,8 +1,8 @@
 /*
 ===========================================
 MeccsIQ AI
-Build: #001
-Version: v1.0.1
+Build: #003
+Version: v1.1.0
 File: lib/core/network/api_client.dart
 ===========================================
 */
@@ -13,6 +13,7 @@ import 'dart:io';
 
 import 'package:http/http.dart' as http;
 
+import '../../services/api_key_service.dart';
 import '../config/api_config.dart';
 import 'api_exception.dart';
 
@@ -27,15 +28,34 @@ class ApiClient {
     String endpoint, {
     Map<String, dynamic>? queryParameters,
   }) async {
-    if (!ApiConfig.hasStatPalKey) {
+    final apiKey =
+        await ApiKeyService.instance.getStatPalKey();
+
+    if (apiKey == null || apiKey.trim().isEmpty) {
       throw const ApiException(
-        'Hiányzik a STATPAL_API_KEY.',
+        'Nincs beállítva StatPal API kulcs.',
       );
     }
 
-    final uri = ApiConfig.uri(
-      endpoint,
-      queryParameters: queryParameters,
+    final query = <String, String>{
+      'access_key': apiKey,
+    };
+
+    if (queryParameters != null) {
+      query.addAll(
+        queryParameters.map(
+          (key, value) => MapEntry(
+            key,
+            value.toString(),
+          ),
+        ),
+      );
+    }
+
+    final uri = Uri.parse(
+      '${ApiConfig.baseUrl}$endpoint',
+    ).replace(
+      queryParameters: query,
     );
 
     try {
