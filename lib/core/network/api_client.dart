@@ -2,7 +2,7 @@
 ===========================================
 MeccsIQ AI
 Build: #001
-Version: v1.0.0
+Version: v1.0.1
 File: lib/core/network/api_client.dart
 ===========================================
 */
@@ -48,54 +48,39 @@ class ApiClient {
           )
           .timeout(ApiConfig.connectTimeout);
 
-      return _handleResponse(response);
+      return _parseResponse(response);
     } on TimeoutException catch (e) {
       throw ApiException.timeout(e);
     } on SocketException catch (e) {
-      throw ApiException.network(e);
-    } on HttpException catch (e) {
       throw ApiException.network(e);
     } catch (e) {
       throw ApiException.unknown(e);
     }
   }
 
-  Map<String, dynamic> _handleResponse(
+  Map<String, dynamic> _parseResponse(
     http.Response response,
   ) {
-    switch (response.statusCode) {
-      case 200:
-        if (response.body.isEmpty) {
-          return {};
-        }
+    if (response.statusCode == 200) {
+      if (response.body.isEmpty) {
+        return {};
+      }
 
-        final decoded = jsonDecode(response.body);
+      final json = jsonDecode(response.body);
 
-        if (decoded is Map<String, dynamic>) {
-          return decoded;
-        }
+      if (json is Map<String, dynamic>) {
+        return json;
+      }
 
-        throw const ApiException(
-          'Érvénytelen JSON válasz.',
-        );
-
-      case 400:
-      case 401:
-      case 404:
-      case 429:
-      case 500:
-        throw ApiException.fromStatusCode(
-          response.statusCode,
-          error: response.body,
-        );
-
-      default:
-        throw ApiException(
-          'Ismeretlen HTTP hiba.',
-          statusCode: response.statusCode,
-          error: response.body,
-        );
+      throw const ApiException(
+        'Érvénytelen JSON válasz.',
+      );
     }
+
+    throw ApiException.fromStatusCode(
+      response.statusCode,
+      error: response.body,
+    );
   }
 
   void dispose() {
