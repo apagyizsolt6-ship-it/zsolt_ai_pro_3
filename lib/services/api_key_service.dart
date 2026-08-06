@@ -1,12 +1,12 @@
 /*
 ===========================================
-MeccsIQ AI
-Build: #002
-Version: v1.0.0
+MeccsIQ AI / Zsolt AI PRO 3
+Version: v0.2.0
 File: lib/services/api_key_service.dart
 ===========================================
 */
 
+import '../core/config/api_config.dart';
 import '../core/storage/secure_storage_service.dart';
 
 class ApiKeyService {
@@ -25,12 +25,23 @@ class ApiKeyService {
     await _storage.saveStatPalKey(apiKey);
   }
 
+  /// Először secure storage, ha üres → dart-define (ApiConfig).
   Future<String?> getStatPalKey() async {
-    return await _storage.getStatPalKey();
+    final stored = await _storage.getStatPalKey();
+    if (stored != null && stored.trim().isNotEmpty) {
+      return stored.trim();
+    }
+
+    if (ApiConfig.hasStatPalKey) {
+      return ApiConfig.statPalApiKey;
+    }
+
+    return null;
   }
 
   Future<bool> hasStatPalKey() async {
-    return await _storage.hasStatPalKey();
+    final key = await getStatPalKey();
+    return key != null && key.trim().isNotEmpty;
   }
 
   Future<void> deleteStatPalKey() async {
@@ -46,11 +57,21 @@ class ApiKeyService {
   }
 
   Future<String?> getGeminiKey() async {
-    return await _storage.getGeminiKey();
+    final stored = await _storage.getGeminiKey();
+    if (stored != null && stored.trim().isNotEmpty) {
+      return stored.trim();
+    }
+
+    if (ApiConfig.hasGeminiKey) {
+      return ApiConfig.geminiApiKey;
+    }
+
+    return null;
   }
 
   Future<bool> hasGeminiKey() async {
-    return await _storage.hasGeminiKey();
+    final key = await getGeminiKey();
+    return key != null && key.trim().isNotEmpty;
   }
 
   Future<void> deleteGeminiKey() async {
