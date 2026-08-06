@@ -2,7 +2,7 @@ name: zsolt_ai_pro_3
 description: AI alapú sportfogadás elemző alkalmazás
 publish_to: "none"
 
-version: 1.0.0+1
+version: 0.3.0+1
 
 environment:
   sdk: ">=3.5.0 <4.0.0"
