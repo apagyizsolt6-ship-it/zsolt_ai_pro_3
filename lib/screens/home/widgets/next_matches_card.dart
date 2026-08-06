@@ -1,15 +1,24 @@
 // ===========================================
 // ZSOLT AI PRO 3
-// Version: v0.1.4
+// Version: v0.2.0
 // File: lib/screens/home/widgets/next_matches_card.dart
 // ===========================================
 
 import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_colors.dart';
+import '../../../models/app_match.dart';
 
 class NextMatchesCard extends StatelessWidget {
-  const NextMatchesCard({super.key});
+  const NextMatchesCard({super.key, this.matches = const []});
+
+  final List<AppMatch> matches;
+
+  String _formatTime(DateTime dt) {
+    final h = dt.hour.toString().padLeft(2, '0');
+    final m = dt.minute.toString().padLeft(2, '0');
+    return '$h:$m';
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -30,46 +39,39 @@ class NextMatchesCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
-            "Következő mérkőzések",
+            'Következő mérkőzések',
             style: TextStyle(
               fontSize: 20,
               fontWeight: FontWeight.bold,
               color: AppColors.textPrimary,
             ),
           ),
-
           const SizedBox(height: 18),
-
-          const _MatchTile(
-            league: "Premier League",
-            home: "Liverpool",
-            away: "Chelsea",
-            time: "18:30",
-            ai: 94,
-            valueBet: true,
-          ),
-
-          const Divider(),
-
-          const _MatchTile(
-            league: "La Liga",
-            home: "Barcelona",
-            away: "Valencia",
-            time: "21:00",
-            ai: 89,
-            valueBet: false,
-          ),
-
-          const Divider(),
-
-          const _MatchTile(
-            league: "Serie A",
-            home: "Inter",
-            away: "Juventus",
-            time: "20:45",
-            ai: 81,
-            valueBet: true,
-          ),
+          if (matches.isEmpty)
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 12),
+              child: Text(
+                'Nincs közelgő mérkőzés.',
+                style: TextStyle(color: AppColors.textSecondary),
+              ),
+            )
+          else
+            ...List.generate(matches.length, (index) {
+              final m = matches[index];
+              return Column(
+                children: [
+                  if (index > 0) const Divider(),
+                  _MatchTile(
+                    league: m.leagueName,
+                    home: m.homeTeam,
+                    away: m.awayTeam,
+                    time: _formatTime(m.kickoff),
+                    ai: m.aiScore,
+                    valueBet: m.valueBet,
+                  ),
+                ],
+              );
+            }),
         ],
       ),
     );
@@ -96,7 +98,8 @@ class _MatchTile extends StatelessWidget {
   Color get aiColor {
     if (ai >= 90) return AppColors.success;
     if (ai >= 80) return Colors.orange;
-    return Colors.red;
+    if (ai > 0) return AppColors.danger;
+    return Colors.grey;
   }
 
   @override
@@ -113,9 +116,7 @@ class _MatchTile extends StatelessWidget {
               color: AppColors.primary,
             ),
           ),
-
           const SizedBox(width: 14),
-
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -127,19 +128,17 @@ class _MatchTile extends StatelessWidget {
                     fontSize: 13,
                   ),
                 ),
-
                 const SizedBox(height: 4),
-
                 Text(
-                  "$home  vs  $away",
+                  '$home  vs  $away',
                   style: const TextStyle(
                     fontWeight: FontWeight.bold,
-                    fontSize: 17,
+                    fontSize: 16,
                   ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
-
                 const SizedBox(height: 4),
-
                 Text(
                   time,
                   style: const TextStyle(
@@ -149,27 +148,26 @@ class _MatchTile extends StatelessWidget {
               ],
             ),
           ),
-
           Column(
             children: [
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 6,
-                ),
-                decoration: BoxDecoration(
-                  color: aiColor,
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: Text(
-                  "$ai%",
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
+              if (ai > 0)
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 6,
+                  ),
+                  decoration: BoxDecoration(
+                    color: aiColor,
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Text(
+                    '$ai%',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ),
-              ),
-
               if (valueBet) ...[
                 const SizedBox(height: 8),
                 Container(
@@ -182,7 +180,7 @@ class _MatchTile extends StatelessWidget {
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: const Text(
-                    "VALUE",
+                    'VALUE',
                     style: TextStyle(
                       color: AppColors.success,
                       fontWeight: FontWeight.bold,

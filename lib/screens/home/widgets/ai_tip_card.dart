@@ -1,18 +1,28 @@
 // ===========================================
 // ZSOLT AI PRO 3
-// Version: v0.1.1
+// Version: v0.2.0
 // File: lib/screens/home/widgets/ai_tip_card.dart
 // ===========================================
 
 import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_colors.dart';
+import '../../../models/app_match.dart';
 
 class AiTipCard extends StatelessWidget {
-  const AiTipCard({super.key});
+  const AiTipCard({super.key, this.match});
+
+  final AppMatch? match;
 
   @override
   Widget build(BuildContext context) {
+    final m = match;
+    final tipText = m == null
+        ? 'Nincs elérhető tipp'
+        : '${m.homeTeam} – ${m.prediction.isEmpty ? "AI elemzés" : m.prediction}';
+    final league = m?.leagueName ?? '';
+    final score = m?.aiScore ?? 0;
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(22),
@@ -42,65 +52,66 @@ class AiTipCard extends StatelessWidget {
               size: 36,
             ),
           ),
-
           const SizedBox(width: 18),
-
-          const Expanded(
+          Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  "Mai AI Tipp",
+                const Text(
+                  'Mai AI Tipp',
                   style: TextStyle(
                     fontSize: 14,
                     color: AppColors.textSecondary,
                   ),
                 ),
-
-                SizedBox(height: 6),
-
+                const SizedBox(height: 6),
                 Text(
-                  "Liverpool győzelem",
-                  style: TextStyle(
-                    fontSize: 22,
+                  tipText,
+                  style: const TextStyle(
+                    fontSize: 20,
                     fontWeight: FontWeight.bold,
                     color: AppColors.textPrimary,
                   ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
                 ),
-
-                SizedBox(height: 8),
-
-                Text(
-                  "Premier League",
-                  style: TextStyle(
-                    color: AppColors.textSecondary,
+                if (league.isNotEmpty) ...[
+                  const SizedBox(height: 8),
+                  Text(
+                    league,
+                    style: const TextStyle(
+                      color: AppColors.textSecondary,
+                    ),
                   ),
-                ),
+                ],
               ],
             ),
           ),
-
           Container(
             padding: const EdgeInsets.symmetric(
               horizontal: 16,
               vertical: 12,
             ),
             decoration: BoxDecoration(
-              color: AppColors.success,
+              color: score >= 90
+                  ? AppColors.success
+                  : score >= 75
+                      ? Colors.orange
+                      : AppColors.primary,
               borderRadius: BorderRadius.circular(18),
             ),
-            child: const Column(
+            child: Column(
               children: [
                 Text(
-                  "94%",
-                  style: TextStyle(
+                  '$score%',
+                  style: const TextStyle(
                     color: Colors.white,
                     fontWeight: FontWeight.bold,
                     fontSize: 24,
                   ),
                 ),
-                Text(
-                  "AI",
+                const Text(
+                  'AI',
                   style: TextStyle(
                     color: Colors.white,
                     fontSize: 12,

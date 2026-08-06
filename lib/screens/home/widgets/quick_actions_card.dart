@@ -1,6 +1,6 @@
 // ===========================================
 // ZSOLT AI PRO 3
-// Version: v0.1.3
+// Version: v0.3.0
 // File: lib/screens/home/widgets/quick_actions_card.dart
 // ===========================================
 
@@ -9,7 +9,10 @@ import 'package:flutter/material.dart';
 import '../../../core/theme/app_colors.dart';
 
 class QuickActionsCard extends StatelessWidget {
-  const QuickActionsCard({super.key});
+  const QuickActionsCard({super.key, this.onSwitchTab});
+
+  /// 0=Kezdőlap, 1=Meccsek, 2=AI, 3=Szelvény, 4=Profil
+  final void Function(int index)? onSwitchTab;
 
   @override
   Widget build(BuildContext context) {
@@ -31,57 +34,53 @@ class QuickActionsCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
-            "Gyors műveletek",
+            'Gyors műveletek',
             style: TextStyle(
               fontSize: 20,
               fontWeight: FontWeight.bold,
               color: AppColors.textPrimary,
             ),
           ),
-
           const SizedBox(height: 20),
-
           Row(
             children: [
               Expanded(
                 child: _ActionButton(
-                  icon: Icons.document_scanner_outlined,
-                  title: "Szelvény",
+                  icon: Icons.receipt_long,
+                  title: 'Szelvény',
                   color: AppColors.primary,
-                  onTap: () {},
+                  onTap: () => onSwitchTab?.call(3),
                 ),
               ),
               const SizedBox(width: 14),
               Expanded(
                 child: _ActionButton(
                   icon: Icons.sports_soccer,
-                  title: "Meccsek",
+                  title: 'Meccsek',
                   color: AppColors.success,
-                  onTap: () {},
+                  onTap: () => onSwitchTab?.call(1),
                 ),
               ),
             ],
           ),
-
           const SizedBox(height: 14),
-
           Row(
             children: [
               Expanded(
                 child: _ActionButton(
                   icon: Icons.auto_awesome,
-                  title: "AI",
+                  title: 'AI',
                   color: Colors.orange,
-                  onTap: () {},
+                  onTap: () => onSwitchTab?.call(2),
                 ),
               ),
               const SizedBox(width: 14),
               Expanded(
                 child: _ActionButton(
-                  icon: Icons.star,
-                  title: "Kedvencek",
+                  icon: Icons.person,
+                  title: 'Profil',
                   color: Colors.purple,
-                  onTap: () {},
+                  onTap: () => onSwitchTab?.call(4),
                 ),
               ),
             ],
@@ -132,9 +131,7 @@ class _ActionButton extends StatelessWidget {
                   size: 28,
                 ),
               ),
-
               const SizedBox(height: 12),
-
               Text(
                 title,
                 textAlign: TextAlign.center,
