@@ -1,6 +1,6 @@
 // ===========================================
 // ZSOLT AI PRO 3
-// Version: v0.3.2
+// Version: v0.3.3
 // File: lib/repositories/match_repository.dart
 // ===========================================
 
@@ -22,36 +22,48 @@ class MatchRepository {
   final CacheService _cache;
 
   bool lastFetchWasMock = true;
+  String? lastError;
 
   String _cacheKey(int dayOffset) => 'matches_offset_$dayOffset';
 
-  /// [dayOffset]: 0 = ma, 1 = holnap, -1 = tegnap, stb. (-7..7)
+  /// [dayOffset]: 0 = ma, 1 = holnap, -1 = tegnap (-7..7)
   Future<List<AppMatch>> getMatches({
     bool forceRefresh = false,
     int dayOffset = 0,
   }) async {
+    lastError = null;
     final key = _cacheKey(dayOffset);
 
     if (!forceRefresh) {
       final cached = _cache.get<List<AppMatch>>(key);
-      if (cached != null) return cached;
+      if (cached != null) {
+        return cached;
+      }
     }
 
     final hasKey = await ApiKeyService.instance.hasStatPalKey();
 
-    if (hasKey) {
-      try {
-        final matches = await _fetchFromApi(dayOffset);
-        if (matches.isNotEmpty) {
-          lastFetchWasMock = false;
-          _cache.put(key, matches, ApiConfig.todayMatchesCache);
-          return matches;
-        }
-      } on ApiException {
-        // mock fallback
-      } catch (_) {
-        // mock fallback
+    if (!hasKey) {
+      lastFetchWasMock = true;
+      lastError = 'Nincs StatPal API kulcs (Profil)';
+      final mock = _getMockMatches();
+      _cache.put(key, mock, const Duration(minutes: 5));
+      return mock;
+    }
+
+    try {
+      final matches = await _fetchFromApi(dayOffset);
+      if (matches.isNotEmpty) {
+        lastFetchWasMock = false;
+        lastError = null;
+        _cache.put(key, matches, ApiConfig.todayMatchesCache);
+        return matches;
       }
+      lastError = 'API válasz OK, de 0 meccs (üres lista)';
+    } on ApiException catch (e) {
+      lastError = e.message;
+    } catch (e) {
+      lastError = e.toString();
     }
 
     lastFetchWasMock = true;
@@ -70,8 +82,6 @@ class MatchRepository {
   }
 
   Future<List<AppMatch>> _fetchFromApi(int dayOffset) async {
-    // Ma: live endpoint; más nap: daily + offset
-    // A daily offset a doksi szerint -7..-1 és 1..7 (0 nélkül)
     if (dayOffset == 0) {
       try {
         final live = await _apiClient.get('/soccer/matches/live');
@@ -79,14 +89,22 @@ class MatchRepository {
         if (parsed.isNotEmpty) return parsed;
       } catch (_) {}
 
-      // Ha a live üres, próbáljuk a daily-t offset=1 és -1 helyett
-      // egyes fiókoknál a 0 is megy:
       try {
         final daily0 = await _apiClient.get(
           '/soccer/matches/daily',
           queryParameters: {'offset': 0},
         );
         final parsed = _parseResponse(daily0);
+        if (parsed.isNotEmpty) return parsed;
+      } catch (_) {}
+
+      // Ma üres lehet – próbáljuk a holnapot is info nélkül
+      try {
+        final daily1 = await _apiClient.get(
+          '/soccer/matches/daily',
+          queryParameters: {'offset': 1},
+        );
+        final parsed = _parseResponse(daily1);
         if (parsed.isNotEmpty) return parsed;
       } catch (_) {}
 
@@ -100,11 +118,8 @@ class MatchRepository {
     return _parseResponse(json);
   }
 
-  /// Érti: live_matches | livescore | matches_DD_MM_YYYY
   List<AppMatch> _parseResponse(Map<String, dynamic> json) {
     final matches = <AppMatch>[];
-
-    // Keressük a root objektumot, amiben van "league"
     final roots = <Map<String, dynamic>>[];
 
     void consider(dynamic v) {
@@ -117,14 +132,12 @@ class MatchRepository {
     consider(json['livescore']);
     consider(json['matches']);
 
-    // matches_15_12_2025 típusú kulcsok
     for (final entry in json.entries) {
       if (entry.key.startsWith('matches_')) {
         consider(entry.value);
       }
     }
 
-    // Ha a gyökér maga tartalmaz league-et
     consider(json);
 
     for (final root in roots) {
@@ -182,7 +195,6 @@ class MatchRepository {
         final idRaw =
             m['main_id'] ?? m['id'] ?? m['fallback_id_1'] ?? leagueId;
         final id = int.tryParse(idRaw.toString()) ?? idRaw.hashCode;
-
         final aiScore = _simpleAiScore(homeName, awayName);
 
         result.add(
