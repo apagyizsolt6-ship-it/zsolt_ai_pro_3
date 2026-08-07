@@ -1,6 +1,6 @@
 // ===========================================
 // ZSOLT AI PRO 3
-// Version: v0.5.4
+// Version: v0.3.0
 // File: lib/screens/matches_screen.dart
 // ===========================================
 
@@ -24,6 +24,7 @@ class MatchesScreen extends StatefulWidget {
 }
 
 class _MatchesScreenState extends State<MatchesScreen> {
+  // NEM const – a MatchRepository nem const konstruktor
   final MatchRepository _repository = MatchRepository();
 
   List<AppMatch> _matches = [];
@@ -131,9 +132,7 @@ class _MatchesScreenState extends State<MatchesScreen> {
                     });
                   },
                 ),
-
                 const SizedBox(height: 16),
-
                 DaySelector(
                   selectedIndex: selectedDay,
                   onSelected: (index) {
@@ -142,9 +141,7 @@ class _MatchesScreenState extends State<MatchesScreen> {
                     });
                   },
                 ),
-
                 const SizedBox(height: 16),
-
                 FilterBar(
                   selectedIndex: selectedFilter,
                   onSelected: (index) {
@@ -157,9 +154,7 @@ class _MatchesScreenState extends State<MatchesScreen> {
               ],
             ),
           ),
-
           const SizedBox(height: 16),
-
           Expanded(
             child: filtered.isEmpty
                 ? const Center(
@@ -191,7 +186,8 @@ class _MatchesScreenState extends State<MatchesScreen> {
             currentLeague != match.leagueName;
 
         if (showLeague) {
-          currentLeague = match.leagueName;          return Column(
+          currentLeague = match.leagueName;
+          return Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               LeagueHeader(
