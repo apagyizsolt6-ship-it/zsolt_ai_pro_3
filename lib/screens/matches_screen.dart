@@ -1,6 +1,6 @@
 // ===========================================
 // ZSOLT AI PRO 3
-// Version: v0.3.0
+// Version: v0.3.2
 // File: lib/screens/matches_screen.dart
 // ===========================================
 
@@ -24,36 +24,58 @@ class MatchesScreen extends StatefulWidget {
 }
 
 class _MatchesScreenState extends State<MatchesScreen> {
-  // NEM const – a MatchRepository nem const konstruktor
   final MatchRepository _repository = MatchRepository();
 
   List<AppMatch> _matches = [];
-
   bool _loading = true;
   bool _onlyFavourites = false;
+  bool _isMock = true;
+  String? _statusMessage;
 
   int selectedDay = 0;
   int selectedFilter = 0;
+  String search = '';
 
-  String search = "";
+  /// DaySelector index → API offset (0=ma, 1=holnap, ...)
+  int get _dayOffset => selectedDay;
 
   @override
   void initState() {
     super.initState();
-    _loadMatches();
+    _loadMatches(forceRefresh: true);
   }
 
-  Future<void> _loadMatches() async {
-    try {
-      final matches = await _repository.getMatches();
+  Future<void> _loadMatches({bool forceRefresh = false}) async {
+    setState(() {
+      _loading = true;
+      _statusMessage = null;
+    });
 
+    try {
+      if (forceRefresh) {
+        _repository.clearCache();
+      }
+
+      final matches = await _repository.getMatches(
+        forceRefresh: forceRefresh,
+        dayOffset: _dayOffset,
+      );
+
+      if (!mounted) return;
       setState(() {
         _matches = matches;
+        _isMock = _repository.lastFetchWasMock;
         _loading = false;
+        _statusMessage = _isMock
+            ? 'Demo adatok (API üres vagy hiba)'
+            : 'Élő StatPal adatok';
       });
-    } catch (_) {
+    } catch (e) {
+      if (!mounted) return;
       setState(() {
         _loading = false;
+        _isMock = true;
+        _statusMessage = 'Hiba: $e';
       });
     }
   }
@@ -62,28 +84,32 @@ class _MatchesScreenState extends State<MatchesScreen> {
     setState(() {
       _matches = _matches.map((m) {
         if (m.id != match.id) return m;
-
-        return m.copyWith(
-          favourite: !m.favourite,
-        );
+        return m.copyWith(favourite: !m.favourite);
       }).toList();
     });
   }
 
   List<AppMatch> get _filteredMatches {
-    List<AppMatch> result = List.from(_matches);
+    var result = List<AppMatch>.from(_matches);
 
     if (search.trim().isNotEmpty) {
-      result = _repository.search(
-        result,
-        search,
-      );
+      result = _repository.search(result, search);
     }
 
     if (_onlyFavourites) {
-      result = _repository.favouritesOnly(
-        result,
-      );
+      result = _repository.favouritesOnly(result);
+    }
+
+    // FilterBar: 0=összes, 1=AI?, 2=value?, 3=kedvencek, 4=élő
+    // A te FilterBar-od indexei szerint:
+    if (selectedFilter == 1) {
+      result = result.where((m) => m.aiScore >= 80).toList();
+    } else if (selectedFilter == 2) {
+      result = _repository.valueBetsOnly(result);
+    } else if (selectedFilter == 3) {
+      result = _repository.favouritesOnly(result);
+    } else if (selectedFilter == 4) {
+      result = result.where((m) => m.live).toList();
     }
 
     return result;
@@ -91,14 +117,6 @@ class _MatchesScreenState extends State<MatchesScreen> {
 
   @override
   Widget build(BuildContext context) {
-    if (_loading) {
-      return const Scaffold(
-        body: Center(
-          child: CircularProgressIndicator(),
-        ),
-      );
-    }
-
     final filtered = _filteredMatches;
 
     return Scaffold(
@@ -107,38 +125,57 @@ class _MatchesScreenState extends State<MatchesScreen> {
         elevation: 0,
         backgroundColor: Colors.white,
         title: const Text(
-          "Mérkőzések",
+          'Mérkőzések',
           style: TextStyle(
             color: Colors.black87,
             fontWeight: FontWeight.bold,
           ),
         ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh, color: Colors.black87),
+            onPressed: () => _loadMatches(forceRefresh: true),
+          ),
+        ],
       ),
       body: Column(
         children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(
-              16,
-              16,
-              16,
-              0,
+          if (_statusMessage != null)
+            Container(
+              width: double.infinity,
+              color: _isMock
+                  ? Colors.orange.shade100
+                  : Colors.green.shade100,
+              padding: const EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: 8,
+              ),
+              child: Text(
+                _statusMessage!,
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: _isMock
+                      ? Colors.orange.shade900
+                      : Colors.green.shade900,
+                ),
+              ),
             ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
             child: Column(
               children: [
                 MatchesSearchBar(
                   onChanged: (value) {
-                    setState(() {
-                      search = value;
-                    });
+                    setState(() => search = value);
                   },
                 ),
                 const SizedBox(height: 16),
                 DaySelector(
                   selectedIndex: selectedDay,
                   onSelected: (index) {
-                    setState(() {
-                      selectedDay = index;
-                    });
+                    setState(() => selectedDay = index);
+                    _loadMatches(forceRefresh: true);
                   },
                 ),
                 const SizedBox(height: 16),
@@ -147,7 +184,7 @@ class _MatchesScreenState extends State<MatchesScreen> {
                   onSelected: (index) {
                     setState(() {
                       selectedFilter = index;
-                      _onlyFavourites = index == 1;
+                      _onlyFavourites = index == 3;
                     });
                   },
                 ),
@@ -156,34 +193,37 @@ class _MatchesScreenState extends State<MatchesScreen> {
           ),
           const SizedBox(height: 16),
           Expanded(
-            child: filtered.isEmpty
-                ? const Center(
-                    child: Text(
-                      "Nincs találat.",
-                    ),
-                  )
-                : _buildMatchList(filtered),
+            child: _loading
+                ? const Center(child: CircularProgressIndicator())
+                : RefreshIndicator(
+                    onRefresh: () => _loadMatches(forceRefresh: true),
+                    child: filtered.isEmpty
+                        ? ListView(
+                            physics:
+                                const AlwaysScrollableScrollPhysics(),
+                            children: const [
+                              SizedBox(height: 120),
+                              Center(child: Text('Nincs találat.')),
+                            ],
+                          )
+                        : _buildMatchList(filtered),
+                  ),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildMatchList(
-    List<AppMatch> matches,
-  ) {
+  Widget _buildMatchList(List<AppMatch> matches) {
     String? currentLeague;
 
     return ListView.builder(
-      padding: const EdgeInsets.symmetric(
-        horizontal: 16,
-      ),
+      physics: const AlwaysScrollableScrollPhysics(),
+      padding: const EdgeInsets.symmetric(horizontal: 16),
       itemCount: matches.length,
       itemBuilder: (context, index) {
         final match = matches[index];
-
-        final showLeague =
-            currentLeague != match.leagueName;
+        final showLeague = currentLeague != match.leagueName;
 
         if (showLeague) {
           currentLeague = match.leagueName;
@@ -194,11 +234,7 @@ class _MatchesScreenState extends State<MatchesScreen> {
                 leagueName: match.leagueName,
                 country: match.country,
                 matchCount: matches
-                    .where(
-                      (m) =>
-                          m.leagueName ==
-                          match.leagueName,
-                    )
+                    .where((m) => m.leagueName == match.leagueName)
                     .length,
               ),
               MatchCard(
@@ -207,15 +243,12 @@ class _MatchesScreenState extends State<MatchesScreen> {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (_) => MatchDetailScreen(
-                        match: match,
-                      ),
+                      builder: (_) =>
+                          MatchDetailScreen(match: match),
                     ),
                   );
                 },
-                onFavouriteTap: () {
-                  _toggleFavourite(match);
-                },
+                onFavouriteTap: () => _toggleFavourite(match),
               ),
             ],
           );
@@ -227,15 +260,11 @@ class _MatchesScreenState extends State<MatchesScreen> {
             Navigator.push(
               context,
               MaterialPageRoute(
-                builder: (_) => MatchDetailScreen(
-                  match: match,
-                ),
+                builder: (_) => MatchDetailScreen(match: match),
               ),
             );
           },
-          onFavouriteTap: () {
-            _toggleFavourite(match);
-          },
+          onFavouriteTap: () => _toggleFavourite(match),
         );
       },
     );
