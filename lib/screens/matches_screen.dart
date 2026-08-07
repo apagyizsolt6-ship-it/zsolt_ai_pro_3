@@ -24,7 +24,7 @@ class MatchesScreen extends StatefulWidget {
 }
 
 class _MatchesScreenState extends State<MatchesScreen> {
-  final MatchRepository _repository = const MatchRepository();
+  final MatchRepository _repository = MatchRepository();
 
   List<AppMatch> _matches = [];
 
