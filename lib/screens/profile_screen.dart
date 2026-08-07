@@ -276,8 +276,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
           const SizedBox(height: 8),
           const Text(
-            'A kulcsok biztonságos tárhelyen (secure storage) mentődnek. '
-            'Üres mező = nem módosít.',
+            'A kulcsok biztonságos tárhelyen mentődnek. Üres mező = nem módosít.',
             style: TextStyle(
               color: AppColors.textSecondary,
               fontSize: 13,
@@ -290,10 +289,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
             obscureText: _obscureStatPal,
             decoration: InputDecoration(
               labelText: 'StatPal API kulcs',
-              hintText: _hasStatPal ? '•••••••• (már mentve)' : 'Írd be a kulcsot',
+              hintText:
+                  _hasStatPal ? '•••••••• (már mentve)' : 'Írd be a kulcsot',
               suffixIcon: IconButton(
                 icon: Icon(
-                  _obscureStatPal ? Icons.visibility : Icons.visibility_off,
+                  _obscureStatPal
+                      ? Icons.visibility
+                      : Icons.visibility_off,
                 ),
                 onPressed: () {
                   setState(() => _obscureStatPal = !_obscureStatPal);
@@ -307,10 +309,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
             obscureText: _obscureGemini,
             decoration: InputDecoration(
               labelText: 'Gemini API kulcs',
-              hintText: _hasGemini ? '•••••••• (már mentve)' : 'Írd be a kulcsot',
+              hintText:
+                  _hasGemini ? '•••••••• (már mentve)' : 'Írd be a kulcsot',
               suffixIcon: IconButton(
                 icon: Icon(
-                  _obscureGemini ? Icons.visibility : Icons.visibility_off,
+                  _obscureGemini
+                      ? Icons.visibility
+                      : Icons.visibility_off,
                 ),
                 onPressed: () {
                   setState(() => _obscureGemini = !_obscureGemini);
@@ -380,7 +385,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
           const SizedBox(height: 12),
           Text(
-            '${AppConstants.appName}  v${AppConstants.version}',
+            '\( {AppConstants.appName}  v \){AppConstants.version}',
             style: const TextStyle(fontWeight: FontWeight.w600),
           ),
           const SizedBox(height: 6),
