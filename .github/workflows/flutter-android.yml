@@ -34,13 +34,25 @@ jobs:
       - name: Flutter version
         run: flutter --version
 
-      - name: Create Android platform files
+      # Csak az android/ mappát generálja – NEM írja felül a lib/ kódot
+      - name: Create Android platform (if missing)
         run: |
-          flutter create . \
-            --platforms=android \
-            --project-name=zsolt_ai_pro_3 \
-            --org=hu.zsoltproai \
-            --overwrite
+          if [ ! -d android ]; then
+            flutter create . \
+              --platforms=android \
+              --project-name=zsolt_ai_pro_3 \
+              --org=hu.zsoltproai
+          else
+            echo "android/ already exists, skip create"
+          fi
+
+      # Biztonság: ha mégis felülíródott a main, vissza a gitből
+      - name: Restore project Dart sources from git
+        run: |
+          git checkout -- lib/ pubspec.yaml 2>/dev/null || true
+          # Ellenőrzés: a mi main.dart-unk legyen
+          head -20 lib/main.dart
+          grep -q "ZsoltAiProApp\|zsolt" lib/main.dart lib/app.dart && echo "OK: custom app sources present"
 
       - name: Remove default widget test if present
         run: rm -f test/widget_test.dart
@@ -48,7 +60,6 @@ jobs:
       - name: Get packages
         run: flutter pub get
 
-      # Analyze nem állítja meg a buildet (csak info)
       - name: Analyze
         continue-on-error: true
         run: flutter analyze || true
