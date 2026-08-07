@@ -1,6 +1,6 @@
 // ===========================================
 // ZSOLT AI PRO 3
-// Version: v0.3.1
+// Version: v0.3.2
 // File: lib/repositories/match_repository.dart
 // ===========================================
 
@@ -21,81 +21,124 @@ class MatchRepository {
   final ApiClient _apiClient;
   final CacheService _cache;
 
-  static const String _cacheKeyToday = 'matches_today';
-
-  /// true = utoljára mock jött; false = API
   bool lastFetchWasMock = true;
 
-  Future<List<AppMatch>> getMatches({bool forceRefresh = false}) async {
+  String _cacheKey(int dayOffset) => 'matches_offset_$dayOffset';
+
+  /// [dayOffset]: 0 = ma, 1 = holnap, -1 = tegnap, stb. (-7..7)
+  Future<List<AppMatch>> getMatches({
+    bool forceRefresh = false,
+    int dayOffset = 0,
+  }) async {
+    final key = _cacheKey(dayOffset);
+
     if (!forceRefresh) {
-      final cached = _cache.get<List<AppMatch>>(_cacheKeyToday);
-      if (cached != null) {
-        return cached;
-      }
+      final cached = _cache.get<List<AppMatch>>(key);
+      if (cached != null) return cached;
     }
 
     final hasKey = await ApiKeyService.instance.hasStatPalKey();
 
     if (hasKey) {
       try {
-        final matches = await _fetchFromApi();
-        // Üres lista = nincs élő meccs / rossz parse → ne cache-eljük üresen
+        final matches = await _fetchFromApi(dayOffset);
         if (matches.isNotEmpty) {
           lastFetchWasMock = false;
-          _cache.put(
-            _cacheKeyToday,
-            matches,
-            ApiConfig.todayMatchesCache,
-          );
+          _cache.put(key, matches, ApiConfig.todayMatchesCache);
           return matches;
         }
       } on ApiException {
-        // esik mockra
+        // mock fallback
       } catch (_) {
-        // esik mockra
+        // mock fallback
       }
     }
 
     lastFetchWasMock = true;
     final mock = _getMockMatches();
-    _cache.put(
-      _cacheKeyToday,
-      mock,
-      const Duration(minutes: 5),
-    );
+    _cache.put(key, mock, const Duration(minutes: 5));
     return mock;
   }
 
   Future<AppMatch?> getMatch(int id) async {
     final matches = await getMatches();
     try {
-      return matches.firstWhere((match) => match.id == id);
+      return matches.firstWhere((m) => m.id == id);
     } catch (_) {
       return null;
     }
   }
 
-  Future<List<AppMatch>> _fetchFromApi() async {
-    // StatPal v2 live
-    final json = await _apiClient.get('/soccer/matches/live');
-    return _parseStatPalResponse(json);
-  }
+  Future<List<AppMatch>> _fetchFromApi(int dayOffset) async {
+    // Ma: live endpoint; más nap: daily + offset
+    // A daily offset a doksi szerint -7..-1 és 1..7 (0 nélkül)
+    if (dayOffset == 0) {
+      try {
+        final live = await _apiClient.get('/soccer/matches/live');
+        final parsed = _parseResponse(live);
+        if (parsed.isNotEmpty) return parsed;
+      } catch (_) {}
 
-  List<AppMatch> _parseStatPalResponse(Map<String, dynamic> json) {
-    final matches = <AppMatch>[];
+      // Ha a live üres, próbáljuk a daily-t offset=1 és -1 helyett
+      // egyes fiókoknál a 0 is megy:
+      try {
+        final daily0 = await _apiClient.get(
+          '/soccer/matches/daily',
+          queryParameters: {'offset': 0},
+        );
+        final parsed = _parseResponse(daily0);
+        if (parsed.isNotEmpty) return parsed;
+      } catch (_) {}
 
-    // v2: live_matches.league  |  v1-szerű: livescore.league
-    Map<String, dynamic>? root;
-    if (json['live_matches'] is Map<String, dynamic>) {
-      root = json['live_matches'] as Map<String, dynamic>;
-    } else if (json['livescore'] is Map<String, dynamic>) {
-      root = json['livescore'] as Map<String, dynamic>;
-    } else {
-      root = json;
+      return [];
     }
 
+    final json = await _apiClient.get(
+      '/soccer/matches/daily',
+      queryParameters: {'offset': dayOffset},
+    );
+    return _parseResponse(json);
+  }
+
+  /// Érti: live_matches | livescore | matches_DD_MM_YYYY
+  List<AppMatch> _parseResponse(Map<String, dynamic> json) {
+    final matches = <AppMatch>[];
+
+    // Keressük a root objektumot, amiben van "league"
+    final roots = <Map<String, dynamic>>[];
+
+    void consider(dynamic v) {
+      if (v is Map<String, dynamic> && v['league'] != null) {
+        roots.add(v);
+      }
+    }
+
+    consider(json['live_matches']);
+    consider(json['livescore']);
+    consider(json['matches']);
+
+    // matches_15_12_2025 típusú kulcsok
+    for (final entry in json.entries) {
+      if (entry.key.startsWith('matches_')) {
+        consider(entry.value);
+      }
+    }
+
+    // Ha a gyökér maga tartalmaz league-et
+    consider(json);
+
+    for (final root in roots) {
+      matches.addAll(_parseLeagues(root));
+    }
+
+    return matches;
+  }
+
+  List<AppMatch> _parseLeagues(Map<String, dynamic> root) {
+    final result = <AppMatch>[];
     final leaguesRaw = root['league'];
     final leagues = <dynamic>[];
+
     if (leaguesRaw is List) {
       leagues.addAll(leaguesRaw);
     } else if (leaguesRaw is Map) {
@@ -107,8 +150,8 @@ class MatchRepository {
       final league = Map<String, dynamic>.from(leagueRaw);
 
       final leagueName = (league['name'] ?? '').toString();
-      final country = (league['country'] ?? _extractCountry(leagueName))
-          .toString();
+      final country =
+          (league['country'] ?? _extractCountry(leagueName)).toString();
       final leagueId = league['id']?.toString() ?? '';
 
       final matchField = league['match'];
@@ -130,71 +173,57 @@ class MatchRepository {
         final homeMap = Map<String, dynamic>.from(home);
         final awayMap = Map<String, dynamic>.from(away);
 
-        final status = (m['status'] ?? m['time'] ?? 'NS').toString();
-        final isLive = _isLiveStatus(status);
-
-        final idRaw = m['main_id'] ?? m['id'] ?? m['static_id'] ?? leagueId;
-        final id = int.tryParse(idRaw.toString()) ?? idRaw.hashCode;
-
         final homeName = (homeMap['name'] ?? '').toString();
         final awayName = (awayMap['name'] ?? '').toString();
         if (homeName.isEmpty && awayName.isEmpty) continue;
 
+        final status = (m['status'] ?? 'NS').toString();
         final timeStr = (m['time'] ?? '').toString();
-        final kickoff = _parseKickoff(
-          m['date']?.toString(),
-          timeStr,
-        );
+        final idRaw =
+            m['main_id'] ?? m['id'] ?? m['fallback_id_1'] ?? leagueId;
+        final id = int.tryParse(idRaw.toString()) ?? idRaw.hashCode;
 
-        // Egyszerű placeholder AI score (Gemini később)
-        final aiScore = _simpleAiScore(homeName, awayName, status);
+        final aiScore = _simpleAiScore(homeName, awayName);
 
-        matches.add(
+        result.add(
           AppMatch(
             id: id.abs() % 100000000,
-            leagueName: leagueName.isEmpty ? 'Ismeretlen liga' : leagueName,
+            leagueName:
+                leagueName.isEmpty ? 'Ismeretlen liga' : leagueName,
             country: country,
             homeTeam: homeName,
             awayTeam: awayName,
             homeLogo: '',
             awayLogo: '',
             leagueLogo: '',
-            kickoff: kickoff,
+            kickoff: _parseKickoff(m['date']?.toString(), timeStr),
             aiScore: aiScore,
             prediction: aiScore >= 70 ? 'Hazai' : '',
             status: status,
-            live: isLive,
+            live: _isLiveStatus(status),
             valueBet: aiScore >= 88,
           ),
         );
       }
     }
 
-    return matches;
+    return result;
   }
 
   bool _isLiveStatus(String status) {
     final s = status.trim().toUpperCase();
-    if (s.isEmpty || s == 'NS' || s == 'FT' || s == 'AET' || s == 'PEN') {
-      return false;
-    }
-    if (s.contains('POST') || s.contains('CANC') || s.contains('ABAND')) {
-      return false;
-    }
-    // perc / HT / élő jelzések
+    if (s == 'NS' || s == 'FT' || s == 'AET' || s == 'PEN') return false;
+    if (s.contains('POST') || s.contains('CANC')) return false;
     if (s == 'HT' || s == 'LIVE') return true;
     if (RegExp(r'^\d+$').hasMatch(s)) return true;
     if (RegExp(r'^\d+\+\d+$').hasMatch(s)) return true;
-    if (RegExp(r'^\d{1,2}:\d{2}$').hasMatch(s)) return false; // kickoff time
-    return s.length <= 3;
+    return false;
   }
 
-  int _simpleAiScore(String home, String away, String status) {
+  int _simpleAiScore(String home, String away) {
     final h = home.toLowerCase().hashCode.abs();
     final a = away.toLowerCase().hashCode.abs();
-    final base = 55 + ((h + a) % 40); // 55–94
-    if (status.toUpperCase() == 'FT') return base.clamp(50, 99);
-    return base.clamp(50, 99);
+    return (55 + ((h + a) % 40)).clamp(50, 99);
   }
 
   String _extractCountry(String leagueName) {
@@ -221,7 +250,6 @@ class MatchRepository {
       } catch (_) {}
     }
 
-    // time pl. "20:45" vagy "20:45:00"
     final tm = RegExp(r'^(\d{1,2}):(\d{2})').firstMatch(timeStr.trim());
     if (tm != null) {
       return DateTime(
@@ -237,7 +265,6 @@ class MatchRepository {
 
   List<AppMatch> _getMockMatches() {
     final now = DateTime.now();
-
     return [
       AppMatch(
         id: 1,
@@ -294,41 +321,6 @@ class MatchRepository {
       ),
       AppMatch(
         id: 4,
-        leagueName: 'Serie A',
-        country: 'Olaszország',
-        homeTeam: 'Inter',
-        awayTeam: 'Milan',
-        homeLogo: '',
-        awayLogo: '',
-        leagueLogo: '',
-        kickoff: now.add(const Duration(hours: 4)),
-        aiScore: 86,
-        prediction: 'Hazai',
-        status: 'NS',
-        homeOdd: 2.10,
-        drawOdd: 3.20,
-        awayOdd: 3.50,
-      ),
-      AppMatch(
-        id: 5,
-        leagueName: 'Bundesliga',
-        country: 'Németország',
-        homeTeam: 'Bayern München',
-        awayTeam: 'Dortmund',
-        homeLogo: '',
-        awayLogo: '',
-        leagueLogo: '',
-        kickoff: now.add(const Duration(hours: 6)),
-        aiScore: 82,
-        prediction: 'Hazai',
-        status: 'NS',
-        homeOdd: 1.65,
-        drawOdd: 4.10,
-        awayOdd: 4.80,
-        valueBet: true,
-      ),
-      AppMatch(
-        id: 6,
         leagueName: 'NB I',
         country: 'Magyarország',
         homeTeam: 'Ferencváros',
@@ -344,41 +336,6 @@ class MatchRepository {
         drawOdd: 3.40,
         awayOdd: 4.20,
       ),
-      AppMatch(
-        id: 7,
-        leagueName: 'Ligue 1',
-        country: 'Franciaország',
-        homeTeam: 'PSG',
-        awayTeam: 'Marseille',
-        homeLogo: '',
-        awayLogo: '',
-        leagueLogo: '',
-        kickoff: now.add(const Duration(hours: 8)),
-        aiScore: 90,
-        prediction: 'Hazai',
-        status: 'NS',
-        homeOdd: 1.40,
-        drawOdd: 4.50,
-        awayOdd: 7.50,
-        valueBet: true,
-      ),
-      AppMatch(
-        id: 8,
-        leagueName: 'Premier League',
-        country: 'Anglia',
-        homeTeam: 'Manchester City',
-        awayTeam: 'Newcastle',
-        homeLogo: '',
-        awayLogo: '',
-        leagueLogo: '',
-        kickoff: now.add(const Duration(hours: 1, minutes: 30)),
-        aiScore: 85,
-        prediction: 'Hazai',
-        status: 'NS',
-        homeOdd: 1.55,
-        drawOdd: 4.00,
-        awayOdd: 5.50,
-      ),
     ];
   }
 
@@ -393,17 +350,17 @@ class MatchRepository {
   }
 
   List<AppMatch> favouritesOnly(List<AppMatch> matches) {
-    return matches.where((match) => match.favourite).toList();
+    return matches.where((m) => m.favourite).toList();
   }
 
   List<AppMatch> search(List<AppMatch> matches, String query) {
     if (query.trim().isEmpty) return matches;
     final q = query.toLowerCase();
-    return matches.where((match) {
-      return match.homeTeam.toLowerCase().contains(q) ||
-          match.awayTeam.toLowerCase().contains(q) ||
-          match.leagueName.toLowerCase().contains(q) ||
-          match.country.toLowerCase().contains(q);
+    return matches.where((m) {
+      return m.homeTeam.toLowerCase().contains(q) ||
+          m.awayTeam.toLowerCase().contains(q) ||
+          m.leagueName.toLowerCase().contains(q) ||
+          m.country.toLowerCase().contains(q);
     }).toList();
   }
 
@@ -416,6 +373,8 @@ class MatchRepository {
   }
 
   void clearCache() {
-    _cache.remove(_cacheKeyToday);
+    for (var i = -7; i <= 7; i++) {
+      _cache.remove(_cacheKey(i));
+    }
   }
 }
