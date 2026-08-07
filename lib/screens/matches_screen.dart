@@ -1,6 +1,6 @@
 // ===========================================
 // ZSOLT AI PRO 3
-// Version: v0.3.2
+// Version: v0.3.3
 // File: lib/screens/matches_screen.dart
 // ===========================================
 
@@ -36,7 +36,6 @@ class _MatchesScreenState extends State<MatchesScreen> {
   int selectedFilter = 0;
   String search = '';
 
-  /// DaySelector index → API offset (0=ma, 1=holnap, ...)
   int get _dayOffset => selectedDay;
 
   @override
@@ -66,9 +65,12 @@ class _MatchesScreenState extends State<MatchesScreen> {
         _matches = matches;
         _isMock = _repository.lastFetchWasMock;
         _loading = false;
-        _statusMessage = _isMock
-            ? 'Demo adatok (API üres vagy hiba)'
-            : 'Élő StatPal adatok';
+        if (_isMock) {
+          _statusMessage =
+              'Demo: ${_repository.lastError ?? "API üres vagy hiba"}';
+        } else {
+          _statusMessage = 'Élő StatPal adatok (${matches.length} meccs)';
+        }
       });
     } catch (e) {
       if (!mounted) return;
@@ -96,18 +98,12 @@ class _MatchesScreenState extends State<MatchesScreen> {
       result = _repository.search(result, search);
     }
 
-    if (_onlyFavourites) {
+    if (_onlyFavourites || selectedFilter == 3) {
       result = _repository.favouritesOnly(result);
-    }
-
-    // FilterBar: 0=összes, 1=AI?, 2=value?, 3=kedvencek, 4=élő
-    // A te FilterBar-od indexei szerint:
-    if (selectedFilter == 1) {
+    } else if (selectedFilter == 1) {
       result = result.where((m) => m.aiScore >= 80).toList();
     } else if (selectedFilter == 2) {
       result = _repository.valueBetsOnly(result);
-    } else if (selectedFilter == 3) {
-      result = _repository.favouritesOnly(result);
     } else if (selectedFilter == 4) {
       result = result.where((m) => m.live).toList();
     }
@@ -134,7 +130,9 @@ class _MatchesScreenState extends State<MatchesScreen> {
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh, color: Colors.black87),
-            onPressed: () => _loadMatches(forceRefresh: true),
+            onPressed: _loading
+                ? null
+                : () => _loadMatches(forceRefresh: true),
           ),
         ],
       ),
