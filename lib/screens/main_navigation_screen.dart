@@ -1,12 +1,14 @@
 // ===========================================
 // ZSOLT AI PRO 3
-// Version: v0.0.8
+// Version: v0.3.0
 // File: lib/screens/main_navigation_screen.dart
 // ===========================================
 
 import 'package:flutter/material.dart';
 
 import 'home_screen.dart';
+import 'matches_screen.dart';
+import 'profile_screen.dart';
 
 class MainNavigationScreen extends StatefulWidget {
   const MainNavigationScreen({super.key});
@@ -20,15 +22,8 @@ class _MainNavigationScreenState
     extends State<MainNavigationScreen> {
   int _selectedIndex = 0;
 
-  final List<Widget> _pages = const [
-    HomeScreen(),
-    _MatchesScreen(),
-    _AiScreen(),
-    _BetslipScreen(),
-    _ProfileScreen(),
-  ];
-
-  void _onItemTapped(int index) {
+  void switchToTab(int index) {
+    if (index < 0 || index > 4) return;
     setState(() {
       _selectedIndex = index;
     });
@@ -36,15 +31,31 @@ class _MainNavigationScreenState
 
   @override
   Widget build(BuildContext context) {
+    final pages = [
+      HomeScreen(onSwitchTab: switchToTab),
+      const MatchesScreen(),
+      const _PlaceholderScreen(
+        title: 'AI Elemzés',
+        subtitle: 'Hamarosan – Gemini integráció',
+        icon: Icons.auto_awesome,
+      ),
+      const _PlaceholderScreen(
+        title: 'Szelvény',
+        subtitle: 'Hamarosan',
+        icon: Icons.receipt_long,
+      ),
+      const ProfileScreen(),
+    ];
+
     return Scaffold(
       body: IndexedStack(
         index: _selectedIndex,
-        children: _pages,
+        children: pages,
       ),
       bottomNavigationBar: NavigationBar(
         height: 72,
         selectedIndex: _selectedIndex,
-        onDestinationSelected: _onItemTapped,
+        onDestinationSelected: switchToTab,
         destinations: const [
           NavigationDestination(
             icon: Icon(Icons.home_outlined),
@@ -77,72 +88,48 @@ class _MainNavigationScreenState
   }
 }
 
-class _MatchesScreen extends StatelessWidget {
-  const _MatchesScreen();
+class _PlaceholderScreen extends StatelessWidget {
+  const _PlaceholderScreen({
+    required this.title,
+    required this.subtitle,
+    required this.icon,
+  });
+
+  final String title;
+  final String subtitle;
+  final IconData icon;
 
   @override
   Widget build(BuildContext context) {
-    return const Center(
-      child: Text(
-        'Meccsek\n(Hamarosan)',
-        textAlign: TextAlign.center,
-        style: TextStyle(
-          fontSize: 22,
-          fontWeight: FontWeight.bold,
-        ),
-      ),
-    );
-  }
-}
-
-class _AiScreen extends StatelessWidget {
-  const _AiScreen();
-
-  @override
-  Widget build(BuildContext context) {
-    return const Center(
-      child: Text(
-        'AI Elemzés\n(Hamarosan)',
-        textAlign: TextAlign.center,
-        style: TextStyle(
-          fontSize: 22,
-          fontWeight: FontWeight.bold,
-        ),
-      ),
-    );
-  }
-}
-
-class _BetslipScreen extends StatelessWidget {
-  const _BetslipScreen();
-
-  @override
-  Widget build(BuildContext context) {
-    return const Center(
-      child: Text(
-        'Szelvény\n(Hamarosan)',
-        textAlign: TextAlign.center,
-        style: TextStyle(
-          fontSize: 22,
-          fontWeight: FontWeight.bold,
-        ),
-      ),
-    );
-  }
-}
-
-class _ProfileScreen extends StatelessWidget {
-  const _ProfileScreen();
-
-  @override
-  Widget build(BuildContext context) {
-    return const Center(
-      child: Text(
-        'Profil\n(Hamarosan)',
-        textAlign: TextAlign.center,
-        style: TextStyle(
-          fontSize: 22,
-          fontWeight: FontWeight.bold,
+    return Scaffold(
+      backgroundColor: const Color(0xFFF5F7FB),
+      body: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              icon,
+              size: 64,
+              color: Colors.blueGrey.shade300,
+            ),
+            const SizedBox(height: 16),
+            Text(
+              title,
+              style: const TextStyle(
+                fontSize: 22,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              subtitle,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 16,
+                color: Colors.grey.shade600,
+              ),
+            ),
+          ],
         ),
       ),
     );
