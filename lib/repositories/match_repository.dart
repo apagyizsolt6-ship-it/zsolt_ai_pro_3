@@ -1,6 +1,6 @@
 // ===========================================
 // ZSOLT AI PRO 3
-// Version: v0.2.0
+// Version: v0.3.1
 // File: lib/repositories/match_repository.dart
 // ===========================================
 
@@ -23,9 +23,9 @@ class MatchRepository {
 
   static const String _cacheKeyToday = 'matches_today';
 
-  /// Meccsek lekérése.
-  /// Ha van StatPal kulcs → API (cache-elve).
-  /// Ha nincs / hiba → mock adatok.
+  /// true = utoljára mock jött; false = API
+  bool lastFetchWasMock = true;
+
   Future<List<AppMatch>> getMatches({bool forceRefresh = false}) async {
     if (!forceRefresh) {
       final cached = _cache.get<List<AppMatch>>(_cacheKeyToday);
@@ -39,19 +39,24 @@ class MatchRepository {
     if (hasKey) {
       try {
         final matches = await _fetchFromApi();
-        _cache.put(
-          _cacheKeyToday,
-          matches,
-          ApiConfig.todayMatchesCache,
-        );
-        return matches;
+        // Üres lista = nincs élő meccs / rossz parse → ne cache-eljük üresen
+        if (matches.isNotEmpty) {
+          lastFetchWasMock = false;
+          _cache.put(
+            _cacheKeyToday,
+            matches,
+            ApiConfig.todayMatchesCache,
+          );
+          return matches;
+        }
       } on ApiException {
-        // API hiba esetén mock fallback
+        // esik mockra
       } catch (_) {
-        // Ismeretlen hiba esetén is mock
+        // esik mockra
       }
     }
 
+    lastFetchWasMock = true;
     final mock = _getMockMatches();
     _cache.put(
       _cacheKeyToday,
@@ -71,30 +76,42 @@ class MatchRepository {
   }
 
   Future<List<AppMatch>> _fetchFromApi() async {
-    // StatPal v2: /soccer/matches/live
-    // A válasz struktúra liga → match lista.
-    // Jelenleg a parsing minimal; később bővítjük odds + prematch endpointokkal.
+    // StatPal v2 live
     final json = await _apiClient.get('/soccer/matches/live');
+    return _parseStatPalResponse(json);
+  }
 
+  List<AppMatch> _parseStatPalResponse(Map<String, dynamic> json) {
     final matches = <AppMatch>[];
-    final liveMatches = json['live_matches'];
-    if (liveMatches is! Map<String, dynamic>) {
-      return matches;
+
+    // v2: live_matches.league  |  v1-szerű: livescore.league
+    Map<String, dynamic>? root;
+    if (json['live_matches'] is Map<String, dynamic>) {
+      root = json['live_matches'] as Map<String, dynamic>;
+    } else if (json['livescore'] is Map<String, dynamic>) {
+      root = json['livescore'] as Map<String, dynamic>;
+    } else {
+      root = json;
     }
 
-    final leagues = liveMatches['league'];
-    if (leagues is! List) {
-      return matches;
+    final leaguesRaw = root['league'];
+    final leagues = <dynamic>[];
+    if (leaguesRaw is List) {
+      leagues.addAll(leaguesRaw);
+    } else if (leaguesRaw is Map) {
+      leagues.add(leaguesRaw);
     }
 
     for (final leagueRaw in leagues) {
-      if (leagueRaw is! Map<String, dynamic>) continue;
+      if (leagueRaw is! Map) continue;
+      final league = Map<String, dynamic>.from(leagueRaw);
 
-      final leagueName = (leagueRaw['name'] ?? '').toString();
-      final country = _extractCountry(leagueName);
-      final leagueId = leagueRaw['id']?.toString() ?? '';
+      final leagueName = (league['name'] ?? '').toString();
+      final country = (league['country'] ?? _extractCountry(leagueName))
+          .toString();
+      final leagueId = league['id']?.toString() ?? '';
 
-      final matchField = leagueRaw['match'];
+      final matchField = league['match'];
       final matchList = <dynamic>[];
       if (matchField is List) {
         matchList.addAll(matchField);
@@ -102,43 +119,82 @@ class MatchRepository {
         matchList.add(matchField);
       }
 
-      for (final m in matchList) {
-        if (m is! Map<String, dynamic>) continue;
+      for (final mRaw in matchList) {
+        if (mRaw is! Map) continue;
+        final m = Map<String, dynamic>.from(mRaw);
 
         final home = m['home'];
         final away = m['away'];
         if (home is! Map || away is! Map) continue;
 
-        final status = (m['status'] ?? 'NS').toString();
-        final isLive = status != 'NS' &&
-            status != 'FT' &&
-            status != 'Postp.' &&
-            status != 'Canc.';
+        final homeMap = Map<String, dynamic>.from(home);
+        final awayMap = Map<String, dynamic>.from(away);
 
-        final idRaw = m['main_id'] ?? m['id'] ?? leagueId.hashCode;
+        final status = (m['status'] ?? m['time'] ?? 'NS').toString();
+        final isLive = _isLiveStatus(status);
+
+        final idRaw = m['main_id'] ?? m['id'] ?? m['static_id'] ?? leagueId;
         final id = int.tryParse(idRaw.toString()) ?? idRaw.hashCode;
+
+        final homeName = (homeMap['name'] ?? '').toString();
+        final awayName = (awayMap['name'] ?? '').toString();
+        if (homeName.isEmpty && awayName.isEmpty) continue;
+
+        final timeStr = (m['time'] ?? '').toString();
+        final kickoff = _parseKickoff(
+          m['date']?.toString(),
+          timeStr,
+        );
+
+        // Egyszerű placeholder AI score (Gemini később)
+        final aiScore = _simpleAiScore(homeName, awayName, status);
 
         matches.add(
           AppMatch(
             id: id.abs() % 100000000,
-            leagueName: leagueName,
+            leagueName: leagueName.isEmpty ? 'Ismeretlen liga' : leagueName,
             country: country,
-            homeTeam: (home['name'] ?? '').toString(),
-            awayTeam: (away['name'] ?? '').toString(),
+            homeTeam: homeName,
+            awayTeam: awayName,
             homeLogo: '',
             awayLogo: '',
             leagueLogo: '',
-            kickoff: _parseKickoff(m['date']?.toString()),
-            aiScore: 0,
-            prediction: '',
+            kickoff: kickoff,
+            aiScore: aiScore,
+            prediction: aiScore >= 70 ? 'Hazai' : '',
             status: status,
             live: isLive,
+            valueBet: aiScore >= 88,
           ),
         );
       }
     }
 
     return matches;
+  }
+
+  bool _isLiveStatus(String status) {
+    final s = status.trim().toUpperCase();
+    if (s.isEmpty || s == 'NS' || s == 'FT' || s == 'AET' || s == 'PEN') {
+      return false;
+    }
+    if (s.contains('POST') || s.contains('CANC') || s.contains('ABAND')) {
+      return false;
+    }
+    // perc / HT / élő jelzések
+    if (s == 'HT' || s == 'LIVE') return true;
+    if (RegExp(r'^\d+$').hasMatch(s)) return true;
+    if (RegExp(r'^\d+\+\d+$').hasMatch(s)) return true;
+    if (RegExp(r'^\d{1,2}:\d{2}$').hasMatch(s)) return false; // kickoff time
+    return s.length <= 3;
+  }
+
+  int _simpleAiScore(String home, String away, String status) {
+    final h = home.toLowerCase().hashCode.abs();
+    final a = away.toLowerCase().hashCode.abs();
+    final base = 55 + ((h + a) % 40); // 55–94
+    if (status.toUpperCase() == 'FT') return base.clamp(50, 99);
+    return base.clamp(50, 99);
   }
 
   String _extractCountry(String leagueName) {
@@ -148,21 +204,35 @@ class MatchRepository {
     return '';
   }
 
-  DateTime _parseKickoff(String? dateStr) {
-    if (dateStr == null || dateStr.isEmpty) {
-      return DateTime.now();
+  DateTime _parseKickoff(String? dateStr, String timeStr) {
+    var base = DateTime.now();
+    if (dateStr != null && dateStr.isNotEmpty) {
+      try {
+        final parts = dateStr.split('.');
+        if (parts.length == 3) {
+          base = DateTime(
+            int.parse(parts[2]),
+            int.parse(parts[1]),
+            int.parse(parts[0]),
+          );
+        } else {
+          base = DateTime.tryParse(dateStr) ?? base;
+        }
+      } catch (_) {}
     }
-    // StatPal formátum pl. "23.12.2025"
-    try {
-      final parts = dateStr.split('.');
-      if (parts.length == 3) {
-        final day = int.parse(parts[0]);
-        final month = int.parse(parts[1]);
-        final year = int.parse(parts[2]);
-        return DateTime(year, month, day);
-      }
-    } catch (_) {}
-    return DateTime.tryParse(dateStr) ?? DateTime.now();
+
+    // time pl. "20:45" vagy "20:45:00"
+    final tm = RegExp(r'^(\d{1,2}):(\d{2})').firstMatch(timeStr.trim());
+    if (tm != null) {
+      return DateTime(
+        base.year,
+        base.month,
+        base.day,
+        int.parse(tm.group(1)!),
+        int.parse(tm.group(2)!),
+      );
+    }
+    return base;
   }
 
   List<AppMatch> _getMockMatches() {
@@ -328,9 +398,7 @@ class MatchRepository {
 
   List<AppMatch> search(List<AppMatch> matches, String query) {
     if (query.trim().isEmpty) return matches;
-
     final q = query.toLowerCase();
-
     return matches.where((match) {
       return match.homeTeam.toLowerCase().contains(q) ||
           match.awayTeam.toLowerCase().contains(q) ||
