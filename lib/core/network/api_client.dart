@@ -1,8 +1,7 @@
 /*
 ===========================================
-MeccsIQ AI
-Build: #003
-Version: v1.1.0
+Zsolt AI PRO 3
+Version: v0.3.2
 File: lib/core/network/api_client.dart
 ===========================================
 */
@@ -28,8 +27,7 @@ class ApiClient {
     String endpoint, {
     Map<String, dynamic>? queryParameters,
   }) async {
-    final apiKey =
-        await ApiKeyService.instance.getStatPalKey();
+    final apiKey = await ApiKeyService.instance.getStatPalKey();
 
     if (apiKey == null || apiKey.trim().isEmpty) {
       throw const ApiException(
@@ -38,25 +36,20 @@ class ApiClient {
     }
 
     final query = <String, String>{
-      'access_key': apiKey,
+      'access_key': apiKey.trim(),
     };
 
     if (queryParameters != null) {
       query.addAll(
         queryParameters.map(
-          (key, value) => MapEntry(
-            key,
-            value.toString(),
-          ),
+          (key, value) => MapEntry(key, value.toString()),
         ),
       );
     }
 
     final uri = Uri.parse(
       '${ApiConfig.baseUrl}$endpoint',
-    ).replace(
-      queryParameters: query,
-    );
+    ).replace(queryParameters: query);
 
     try {
       final response = await _client
@@ -66,9 +59,11 @@ class ApiClient {
               'Accept': 'application/json',
             },
           )
-          .timeout(ApiConfig.connectTimeout);
+          .timeout(ApiConfig.receiveTimeout);
 
       return _parseResponse(response);
+    } on ApiException {
+      rethrow;
     } on TimeoutException catch (e) {
       throw ApiException.timeout(e);
     } on SocketException catch (e) {
@@ -78,13 +73,9 @@ class ApiClient {
     }
   }
 
-  Map<String, dynamic> _parseResponse(
-    http.Response response,
-  ) {
+  Map<String, dynamic> _parseResponse(http.Response response) {
     if (response.statusCode == 200) {
-      if (response.body.isEmpty) {
-        return {};
-      }
+      if (response.body.isEmpty) return {};
 
       final json = jsonDecode(response.body);
 
@@ -92,9 +83,7 @@ class ApiClient {
         return json;
       }
 
-      throw const ApiException(
-        'Érvénytelen JSON válasz.',
-      );
+      throw const ApiException('Érvénytelen JSON válasz.');
     }
 
     throw ApiException.fromStatusCode(
